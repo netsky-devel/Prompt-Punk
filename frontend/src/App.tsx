@@ -6,13 +6,14 @@ import { PromptResult } from './components/PromptResult'
 import { ArchitectureSelector } from './components/ArchitectureSelector'
 import { LoadingSpinner } from './components/LoadingSpinner'
 import { MultiAgentInterface } from './components/MultiAgentInterface'
+import { AsyncTaskInterface } from './components/AsyncTaskInterface'
 import { usePromptImprovement } from './hooks/usePromptImprovement'
 import type { PromptArchitecture, ProviderSettings, ConnectionTestResult } from './types/api'
 
-type ImprovementMode = 'single' | 'multi'
+type ImprovementMode = 'single' | 'multi' | 'async'
 
 function App() {
-  const [improvementMode, setImprovementMode] = useState<ImprovementMode>('multi')
+  const [improvementMode, setImprovementMode] = useState<ImprovementMode>('async')
   const [originalPrompt, setOriginalPrompt] = useState('')
   const [context, setContext] = useState('')
   const [targetAudience, setTargetAudience] = useState('')
@@ -73,7 +74,7 @@ function App() {
                 Improvement Mode
               </h2>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <motion.button
                   onClick={() => setImprovementMode('single')}
                   className={`p-4 rounded-lg border-2 transition-all duration-200 ${
@@ -105,6 +106,23 @@ function App() {
                   <div className="font-medium">Multi-Agent Elite</div>
                   <div className="text-sm opacity-75 mt-1">
                     Advanced AI team with 2025 techniques
+                  </div>
+                </motion.button>
+
+                <motion.button
+                  onClick={() => setImprovementMode('async')}
+                  className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+                    improvementMode === 'async'
+                      ? 'border-primary-500 bg-primary-50 text-primary-700'
+                      : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                  }`}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <div className="text-2xl mb-2">🔥</div>
+                  <div className="font-medium">Async Tasks</div>
+                  <div className="text-sm opacity-75 mt-1">
+                    No timeouts, full history
                   </div>
                 </motion.button>
               </div>
@@ -249,6 +267,20 @@ function App() {
                   prompt={originalPrompt}
                   providerSettings={providerSettings}
                   onPromptChange={setOriginalPrompt}
+                />
+              </motion.div>
+            )}
+
+            {/* Async Task Interface */}
+            {improvementMode === 'async' && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+              >
+                <AsyncTaskInterface
+                  apiKey={providerSettings.api_key}
+                  modelName={providerSettings.model_name}
                 />
               </motion.div>
             )}
