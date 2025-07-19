@@ -7,8 +7,22 @@ export type PromptArchitecture =
   | 'emotional'
   | 'structured'
 
+export type AIProvider = 
+  | 'google'
+  | 'openai'
+  | 'anthropic'
+
+export interface ProviderSettings {
+  provider: AIProvider
+  model_name: string
+  api_key: string
+  temperature?: number
+  max_tokens?: number
+}
+
 export interface PromptRequest {
   original_prompt: string
+  provider_settings: ProviderSettings
   architecture?: PromptArchitecture
   context?: string
   target_audience?: string
@@ -38,6 +52,8 @@ export interface PromptResponse {
   improved_prompt: string
   improvements: PromptImprovement
   architecture_used: PromptArchitecture
+  provider_used: string
+  model_used: string
 }
 
 export interface ArchitectureOption {
@@ -46,10 +62,27 @@ export interface ArchitectureOption {
   description: string
 }
 
+export interface ProviderModel {
+  provider: AIProvider
+  models: string[]
+  default_model: string
+}
+
+export interface ProvidersResponse {
+  providers: ProviderModel[]
+}
+
 export interface HealthCheck {
   status: string
   version: string
-  gemini_connected: boolean
+  supported_providers: string[]
+}
+
+export interface ConnectionTestResult {
+  provider: string
+  model: string
+  connected: boolean
+  status: 'success' | 'failed'
 }
 
 export interface ApiError {

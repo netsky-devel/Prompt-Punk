@@ -4,15 +4,25 @@ import { Header } from './components/Header'
 import { PromptForm } from './components/PromptForm'
 import { PromptResult } from './components/PromptResult'
 import { ArchitectureSelector } from './components/ArchitectureSelector'
+import { AIProviderSettings } from './components/AIProviderSettings'
 import { LoadingSpinner } from './components/LoadingSpinner'
 import { usePromptImprovement } from './hooks/usePromptImprovement'
-import { PromptArchitecture } from './types/api'
+import type { PromptArchitecture, ProviderSettings, ConnectionTestResult } from './types/api'
 
 function App() {
   const [originalPrompt, setOriginalPrompt] = useState('')
   const [selectedArchitecture, setSelectedArchitecture] = useState<PromptArchitecture>('auto')
   const [context, setContext] = useState('')
   const [targetAudience, setTargetAudience] = useState('')
+  
+  // AI Provider settings state
+  const [providerSettings, setProviderSettings] = useState<ProviderSettings>({
+    provider: 'google',
+    model_name: 'gemini-1.5-pro-latest',
+    api_key: '',
+    temperature: 0.7,
+    max_tokens: undefined
+  })
   
   const { 
     mutate: improvePrompt, 
@@ -22,15 +32,26 @@ function App() {
   } = usePromptImprovement()
 
   const handleSubmit = () => {
-    if (!originalPrompt.trim()) return
+    if (!originalPrompt.trim() || !providerSettings.api_key.trim()) return
     
     improvePrompt({
       original_prompt: originalPrompt,
+      provider_settings: providerSettings,
       architecture: selectedArchitecture,
       context: context || undefined,
       target_audience: targetAudience || undefined,
     })
   }
+
+  const handleConnectionTest = (result: ConnectionTestResult) => {
+    if (result.connected) {
+      console.log(`✅ Connected to ${result.provider} ${result.model}`)
+    } else {
+      console.error(`❌ Failed to connect to ${result.provider} ${result.model}`)
+    }
+  }
+
+  const isReadyToSubmit = originalPrompt.trim() && providerSettings.api_key.trim()
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
@@ -38,16 +59,30 @@ function App() {
       
       <main className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Левая панель - ввод */}
+          {/* Left panel - input */}
           <div className="space-y-6">
+            {/* AI Provider Settings */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
+              <AIProviderSettings
+                settings={providerSettings}
+                onSettingsChange={setProviderSettings}
+                onTestConnection={handleConnectionTest}
+              />
+            </motion.div>
+
+            {/* Prompt Form */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
               <div className="card p-6">
                 <h2 className="text-xl font-semibold mb-4 text-gray-900">
-                  Введите ваш промпт
+                  Enter Your Prompt
                 </h2>
                 
                 <PromptForm
@@ -61,10 +96,11 @@ function App() {
               </div>
             </motion.div>
 
+            {/* Architecture Selector */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
             >
               <ArchitectureSelector
                 selected={selectedArchitecture}
@@ -72,27 +108,35 @@ function App() {
               />
             </motion.div>
 
+            {/* Submit Button */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
             >
               <button
                 onClick={handleSubmit}
-                disabled={!originalPrompt.trim() || isLoading}
+                disabled={!isReadyToSubmit || isLoading}
                 className="btn btn-primary btn-lg w-full"
               >
                 {isLoading ? (
                   <>
                     <LoadingSpinner size="sm" />
-                    Улучшаем промпт...
+                    Improving prompt...
                   </>
                 ) : (
-                  'Улучшить промпт'
+                  'Improve Prompt'
                 )}
               </button>
+              
+              {!providerSettings.api_key.trim() && (
+                <p className="text-sm text-gray-500 mt-2 text-center">
+                  Please enter your API key in the provider settings above
+                </p>
+              )}
             </motion.div>
 
+            {/* Error Display */}
             {error && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -100,13 +144,13 @@ function App() {
                 className="card p-4 border-error-200 bg-error-50"
               >
                 <p className="text-error-700 text-sm">
-                  Ошибка: {error.message}
+                  Error: {error.detail}
                 </p>
               </motion.div>
             )}
           </div>
 
-          {/* Правая панель - результат */}
+          {/* Right panel - result */}
           <div className="space-y-6">
             {result ? (
               <motion.div
@@ -132,10 +176,10 @@ function App() {
                   </svg>
                 </div>
                 <h3 className="text-lg font-medium text-gray-600 mb-2">
-                  Готов к улучшению
+                  Ready to Improve
                 </h3>
                 <p className="text-gray-500">
-                  Введите ваш промпт слева и нажмите "Улучшить промпт" для получения оптимизированной версии
+                  Configure your AI provider, enter your prompt on the left, and click "Improve Prompt" to get an optimized version
                 </p>
               </motion.div>
             )}
