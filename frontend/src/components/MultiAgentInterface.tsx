@@ -7,7 +7,6 @@ interface MultiAgentInterfaceProps {
   prompt: string
   providerSettings: ProviderSettings
   onPromptChange: (prompt: string) => void
-  isEnhanced?: boolean
 }
 
 interface AgentUpdate {
@@ -51,8 +50,7 @@ const AGENT_INFO: AgentInfo[] = [
 export const MultiAgentInterface: React.FC<MultiAgentInterfaceProps> = ({
   prompt,
   providerSettings,
-  onPromptChange,
-  isEnhanced = false
+  onPromptChange
 }) => {
   const [isRunning, setIsRunning] = useState(false)
   const [maxRounds, setMaxRounds] = useState(10)
@@ -76,9 +74,7 @@ export const MultiAgentInterface: React.FC<MultiAgentInterfaceProps> = ({
     setCurrentAgent('Prompt Engineer')
 
     try {
-      const endpoint = isEnhanced 
-        ? 'http://localhost:8000/api/v1/enhanced-multi-agent/improve-prompt'
-        : 'http://localhost:8000/api/v1/multi-agent/improve-prompt-stream'
+      const endpoint = 'http://localhost:8000/api/v1/multi-agent/improve-prompt-stream'
       
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -181,7 +177,7 @@ export const MultiAgentInterface: React.FC<MultiAgentInterfaceProps> = ({
       className="card p-6"
     >
       <h2 className="text-xl font-semibold mb-4 text-gray-900">
-        {isEnhanced ? '🚀 Enhanced Elite Multi-Agent System' : '🤖 Multi-Agent Prompt Improvement'}
+        🚀 Multi-Agent Elite System
       </h2>
 
       {/* Agent Information */}
