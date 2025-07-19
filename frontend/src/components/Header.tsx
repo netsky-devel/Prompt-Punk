@@ -14,15 +14,12 @@ export const Header: React.FC = () => {
                 Prompt Punk
               </h1>
               <p className="text-sm text-gray-600">
-                Улучшение промптов для ИИ
+                AI Prompt Enhancement & Optimization
               </p>
             </div>
           </div>
           
           <div className="hidden md:flex items-center space-x-4">
-            <div className="text-sm text-gray-600">
-              Powered by <span className="font-medium">Gemini 2.5 Pro</span>
-            </div>
             <div className="w-2 h-2 bg-success-500 rounded-full animate-pulse"></div>
           </div>
         </div>

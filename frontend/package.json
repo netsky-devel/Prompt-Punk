@@ -1,7 +1,7 @@
 {
   "name": "meta-prompt-frontend",
   "version": "1.0.0",
-  "description": "Frontend для системы улучшения промптов Meta-Prompt",
+  "description": "Frontend for Meta-Prompt AI Enhancement System",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

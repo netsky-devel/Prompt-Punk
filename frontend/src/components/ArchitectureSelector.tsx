@@ -9,44 +9,44 @@ interface ArchitectureSelectorProps {
 const architectures = [
   {
     id: 'auto' as PromptArchitecture,
-    name: 'Автоматический выбор',
-    description: 'ИИ автоматически выберет лучшую архитектуру',
+    name: 'Auto Select',
+    description: 'AI will automatically choose the best architecture',
     icon: '🎯'
   },
   {
     id: '5_tier' as PromptArchitecture,
-    name: '5-уровневый фреймворк',
+    name: '5-Tier Framework',
     description: 'Role → Task → Context → Examples → Reminders',
     icon: '🏗️'
   },
   {
     id: 'chain_of_thought' as PromptArchitecture,
     name: 'Chain-of-Thought',
-    description: 'Пошаговое рассуждение для сложных задач',
+    description: 'Step-by-step reasoning for complex tasks',
     icon: '🔗'
   },
   {
     id: 'zero_shot' as PromptArchitecture,
     name: 'Zero-shot',
-    description: 'Без примеров, только инструкции',
+    description: 'No examples, instructions only',
     icon: '⚡'
   },
   {
     id: 'few_shot' as PromptArchitecture,
     name: 'Few-shot',
-    description: 'С примерами для лучшего понимания',
+    description: 'With examples for better understanding',
     icon: '📚'
   },
   {
     id: 'emotional' as PromptArchitecture,
     name: 'EmotionPrompting',
-    description: 'Эмоциональные триггеры для улучшения производительности',
+    description: 'Emotional triggers to improve performance',
     icon: '💡'
   },
   {
     id: 'structured' as PromptArchitecture,
-    name: 'Структурированный',
-    description: 'Четкая структура и форматирование',
+    name: 'Structured',
+    description: 'Clear structure and formatting',
     icon: '📋'
   }
 ]
@@ -58,7 +58,7 @@ export const ArchitectureSelector: React.FC<ArchitectureSelectorProps> = ({
   return (
     <div className="card p-6">
       <h3 className="text-lg font-semibold mb-4 text-gray-900">
-        Архитектура промпта
+        Prompt Architecture
       </h3>
       
       <div className="grid grid-cols-1 gap-3">

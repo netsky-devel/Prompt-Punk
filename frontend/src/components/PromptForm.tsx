@@ -21,12 +21,12 @@ export const PromptForm: React.FC<PromptFormProps> = ({
     <div className="space-y-4">
       <div>
         <label htmlFor="prompt" className="block text-sm font-medium text-gray-700 mb-2">
-          Исходный промпт *
+          Original Prompt *
         </label>
         <textarea
           id="prompt"
           className="textarea min-h-[120px]"
-          placeholder="Введите ваш промпт для улучшения..."
+          placeholder="Enter your prompt for improvement..."
           value={prompt}
           onChange={(e) => onPromptChange(e.target.value)}
         />
@@ -34,12 +34,12 @@ export const PromptForm: React.FC<PromptFormProps> = ({
 
       <div>
         <label htmlFor="context" className="block text-sm font-medium text-gray-700 mb-2">
-          Дополнительный контекст
+          Additional Context
         </label>
         <textarea
           id="context"
           className="textarea min-h-[80px]"
-          placeholder="Опишите контекст использования промпта (опционально)"
+          placeholder="Describe the context of prompt usage (optional)"
           value={context}
           onChange={(e) => onContextChange(e.target.value)}
         />
@@ -47,13 +47,13 @@ export const PromptForm: React.FC<PromptFormProps> = ({
 
       <div>
         <label htmlFor="audience" className="block text-sm font-medium text-gray-700 mb-2">
-          Целевая аудитория
+          Target Audience
         </label>
         <input
           id="audience"
           type="text"
           className="input"
-          placeholder="Например: разработчики, маркетологи, студенты"
+          placeholder="Specify the target audience (optional)"
           value={targetAudience}
           onChange={(e) => onTargetAudienceChange(e.target.value)}
         />

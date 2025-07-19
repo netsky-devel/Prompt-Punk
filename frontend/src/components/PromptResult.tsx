@@ -26,9 +26,9 @@ export const PromptResult: React.FC<PromptResultProps> = ({
         <div className="border-b border-gray-200">
           <nav className="flex space-x-8 px-6">
             {[
-              { id: 'improved', label: 'Улучшенный промпт', icon: '✨' },
-              { id: 'analysis', label: 'Анализ', icon: '🔍' },
-              { id: 'comparison', label: 'Сравнение', icon: '⚖️' },
+              { id: 'improved', label: 'Improved Prompt', icon: '✨' },
+              { id: 'analysis', label: 'Analysis', icon: '🔍' },
+              { id: 'comparison', label: 'Comparison', icon: '⚖️' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -47,12 +47,12 @@ export const PromptResult: React.FC<PromptResultProps> = ({
         </div>
 
         <div className="p-6">
-          {/* Улучшенный промпт */}
+          {/* Improved Prompt */}
           {activeTab === 'improved' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900">
-                  Улучшенный промпт
+                  Improved Prompt
                 </h3>
                 <div className="flex items-center space-x-3">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -62,13 +62,13 @@ export const PromptResult: React.FC<PromptResultProps> = ({
                       ? 'bg-warning-100 text-warning-800'
                       : 'bg-error-100 text-error-800'
                   }`}>
-                    Качество: {result.improvements.quality_score}/100
+                    Quality: {result.improvements.quality_score}/100
                   </span>
                   <button
                     onClick={() => copyToClipboard(result.improved_prompt, 'improved')}
                     className="btn btn-sm btn-secondary"
                   >
-                    {copiedText === 'improved' ? '✓ Скопировано' : '📋 Копировать'}
+                    {copiedText === 'improved' ? '✓ Copied' : '📋 Copy'}
                   </button>
                 </div>
               </div>
@@ -81,16 +81,16 @@ export const PromptResult: React.FC<PromptResultProps> = ({
 
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="font-medium text-gray-700">Архитектура:</span>
+                  <span className="font-medium text-gray-700">Architecture:</span>
                   <span className="ml-2 text-gray-600">
-                    {result.architecture_used === '5_tier' ? '5-уровневый фреймворк' :
+                    {result.architecture_used === '5_tier' ? '5-Tier Framework' :
                      result.architecture_used === 'chain_of_thought' ? 'Chain-of-Thought' :
                      result.architecture_used === 'emotional' ? 'EmotionPrompting' :
                      result.architecture_used}
                   </span>
                 </div>
                 <div>
-                  <span className="font-medium text-gray-700">Техник применено:</span>
+                  <span className="font-medium text-gray-700">Techniques Applied:</span>
                   <span className="ml-2 text-gray-600">
                     {result.improvements.applied_techniques.length}
                   </span>
@@ -99,16 +99,16 @@ export const PromptResult: React.FC<PromptResultProps> = ({
             </div>
           )}
 
-          {/* Анализ */}
+          {/* Analysis */}
           {activeTab === 'analysis' && (
             <div className="space-y-6">
               <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Основная цель</h4>
+                <h4 className="font-semibold text-gray-900 mb-2">Main Goal</h4>
                 <p className="text-gray-700">{result.analysis.main_goal}</p>
               </div>
 
               <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Выявленные проблемы</h4>
+                <h4 className="font-semibold text-gray-900 mb-2">Identified Problems</h4>
                 <ul className="space-y-2">
                   {result.analysis.identified_problems.map((problem, index) => (
                     <li key={index} className="flex items-start">
@@ -120,7 +120,7 @@ export const PromptResult: React.FC<PromptResultProps> = ({
               </div>
 
               <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Недостающие элементы</h4>
+                <h4 className="font-semibold text-gray-900 mb-2">Missing Elements</h4>
                 <ul className="space-y-2">
                   {result.analysis.missing_elements.map((element, index) => (
                     <li key={index} className="flex items-start">
@@ -132,19 +132,19 @@ export const PromptResult: React.FC<PromptResultProps> = ({
               </div>
 
               <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Потенциал улучшения</h4>
+                <h4 className="font-semibold text-gray-900 mb-2">Improvement Potential</h4>
                 <p className="text-gray-700">{result.analysis.improvement_potential}</p>
               </div>
 
               <div>
-                <h4 className="font-semibold text-gray-900 mb-3">Применённые техники</h4>
+                <h4 className="font-semibold text-gray-900 mb-3">Applied Techniques</h4>
                 <div className="space-y-3">
                   {result.improvements.applied_techniques.map((technique, index) => (
                     <div key={index} className="border border-gray-200 rounded-lg p-4">
                       <h5 className="font-medium text-gray-900 mb-1">{technique.name}</h5>
                       <p className="text-sm text-gray-600 mb-2">{technique.description}</p>
                       <p className="text-sm text-success-600">
-                        <span className="font-medium">Эффект:</span> {technique.expected_effect}
+                        <span className="font-medium">Effect:</span> {technique.expected_effect}
                       </p>
                     </div>
                   ))}
@@ -152,7 +152,7 @@ export const PromptResult: React.FC<PromptResultProps> = ({
               </div>
 
               <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Ожидаемые результаты</h4>
+                <h4 className="font-semibold text-gray-900 mb-2">Expected Results</h4>
                 <ul className="space-y-2">
                   {result.improvements.expected_results.map((result, index) => (
                     <li key={index} className="flex items-start">
@@ -165,12 +165,12 @@ export const PromptResult: React.FC<PromptResultProps> = ({
             </div>
           )}
 
-          {/* Сравнение */}
+          {/* Comparison */}
           {activeTab === 'comparison' && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-semibold text-gray-900">Исходный промпт</h4>
+                  <h4 className="font-semibold text-gray-900">Original Prompt</h4>
                   <button
                     onClick={() => copyToClipboard(originalPrompt, 'original')}
                     className="btn btn-sm btn-secondary"
@@ -184,13 +184,13 @@ export const PromptResult: React.FC<PromptResultProps> = ({
                   </pre>
                 </div>
                 <div className="mt-2 text-xs text-gray-500">
-                  Символов: {originalPrompt.length}
+                  Characters: {originalPrompt.length}
                 </div>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-semibold text-gray-900">Улучшенный промпт</h4>
+                  <h4 className="font-semibold text-gray-900">Improved Prompt</h4>
                   <button
                     onClick={() => copyToClipboard(result.improved_prompt, 'improved-comp')}
                     className="btn btn-sm btn-secondary"
@@ -204,7 +204,7 @@ export const PromptResult: React.FC<PromptResultProps> = ({
                   </pre>
                 </div>
                 <div className="mt-2 text-xs text-gray-500">
-                  Символов: {result.improved_prompt.length} (+{result.improved_prompt.length - originalPrompt.length})
+                  Characters: {result.improved_prompt.length} (+{result.improved_prompt.length - originalPrompt.length})
                 </div>
               </div>
             </div>
