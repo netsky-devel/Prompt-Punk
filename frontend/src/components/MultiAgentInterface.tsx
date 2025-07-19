@@ -180,9 +180,27 @@ export const MultiAgentInterface: React.FC<MultiAgentInterfaceProps> = ({
         🚀 Multi-Agent Elite System
       </h2>
 
+      {/* Prompt Input */}
+      <div className="mb-6">
+        <label htmlFor="multiAgentPrompt" className="block text-sm font-medium text-gray-700 mb-2">
+          Prompt to Improve *
+        </label>
+        <textarea
+          id="multiAgentPrompt"
+          className="textarea min-h-[120px]"
+          placeholder="Enter your prompt for multi-agent improvement..."
+          value={prompt}
+          onChange={(e) => onPromptChange(e.target.value)}
+          disabled={isRunning}
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          The elite team will analyze and improve this prompt through collaborative iteration
+        </p>
+      </div>
+
       {/* Agent Information */}
       <div className="mb-6">
-        <h3 className="text-sm font-medium text-gray-700 mb-3">System Overview</h3>
+        <h3 className="text-sm font-medium text-gray-700 mb-3">Elite Team Status</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {AGENT_INFO.map((agent, index) => (
             <div
@@ -196,6 +214,9 @@ export const MultiAgentInterface: React.FC<MultiAgentInterfaceProps> = ({
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-lg">{getAgentIcon(agent.name)}</span>
                 <span className="font-medium text-sm">{agent.name}</span>
+                {currentAgent === agent.name && isRunning && (
+                  <div className="w-2 h-2 bg-primary-500 rounded-full animate-pulse"></div>
+                )}
               </div>
               <p className="text-xs text-gray-600">{agent.role}</p>
             </div>
@@ -233,9 +254,15 @@ export const MultiAgentInterface: React.FC<MultiAgentInterfaceProps> = ({
               Round {currentRound}/{maxRounds}
             </>
           ) : (
-            'Start Multi-Agent Improvement'
+            'Start Elite Team Improvement'
           )}
         </button>
+        
+        {(!prompt.trim() || !providerSettings.api_key.trim()) && !isRunning && (
+          <p className="text-sm text-gray-500 mt-2">
+            {!prompt.trim() ? 'Please enter a prompt to improve' : 'Please configure API key in Provider Settings'}
+          </p>
+        )}
       </div>
 
       {/* Current Status */}
