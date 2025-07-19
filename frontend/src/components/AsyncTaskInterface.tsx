@@ -100,7 +100,7 @@ export const AsyncTaskInterface: React.FC<AsyncTaskInterfaceProps> = ({
 
   const loadRecentTasks = async () => {
     try {
-      const response = await fetch('/api/v1/tasks/recent?limit=10');
+      const response = await fetch('http://localhost:8000/api/v1/tasks/recent?limit=10');
       const data = await response.json();
       setRecentTasks(data.tasks || []);
     } catch (error) {
@@ -140,7 +140,9 @@ export const AsyncTaskInterface: React.FC<AsyncTaskInterfaceProps> = ({
         target_audience: targetAudience || undefined
       };
 
-      const response = await fetch('/api/v1/tasks/improve-prompt', {
+      console.log('Creating task with data:', requestData);
+
+      const response = await fetch('http://localhost:8000/api/v1/tasks/improve-prompt', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -148,18 +150,21 @@ export const AsyncTaskInterface: React.FC<AsyncTaskInterfaceProps> = ({
         body: JSON.stringify(requestData)
       });
 
-      const result: TaskResponse = await response.json();
-      
+      console.log('Response received:', response.status, response.statusText);
+
       if (response.ok) {
+        const result: TaskResponse = await response.json();
         setCurrentTask(result);
         setSelectedTaskId(result.task_id);
         loadRecentTasks(); // Refresh task list
       } else {
-        alert(`Failed to create task: ${result.message || 'Unknown error'}`);
+        const errorText = await response.text();
+        console.error('HTTP Error:', response.status, response.statusText, errorText);
+        alert(`Failed to create task: HTTP ${response.status} - ${errorText}`);
       }
     } catch (error) {
       console.error('Error creating task:', error);
-      alert('Failed to create task. Please try again.');
+      alert(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsCreatingTask(false);
     }
@@ -170,7 +175,7 @@ export const AsyncTaskInterface: React.FC<AsyncTaskInterfaceProps> = ({
     
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(`/api/v1/tasks/${taskId}/status`);
+        const response = await fetch(`http://localhost:8000/api/v1/tasks/${taskId}/status`);
         const status: TaskStatus = await response.json();
         
         setTaskStatus(status);
@@ -197,7 +202,7 @@ export const AsyncTaskInterface: React.FC<AsyncTaskInterfaceProps> = ({
 
   const viewTaskResults = async (taskId: number) => {
     try {
-      const response = await fetch(`/api/v1/tasks/${taskId}/status`);
+      const response = await fetch(`http://localhost:8000/api/v1/tasks/${taskId}/status`);
       const status: TaskStatus = await response.json();
       setTaskStatus(status);
       setSelectedTaskId(taskId);
