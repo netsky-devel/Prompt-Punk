@@ -88,4 +88,56 @@ dmypy.json
 *.tmp
 *.temp
 *.bak
-*.backup 
+*.backup
+
+# Ruby on Rails
+*.rbc
+capybara-*.html
+.rspec
+/db/*.sqlite3
+/db/*.sqlite3-journal
+/db/*.sqlite3-*
+/public/system
+/coverage/
+/spec/tmp
+*.orig
+rerun.txt
+pickle-email-*.html
+
+# Rails specific
+/config/database.yml
+/config/master.key
+/config/credentials.yml.enc
+/config/credentials/
+/storage/*
+!/storage/.keep
+/tmp/
+!/tmp/.keep
+/tmp/storage/
+!/tmp/storage/.keep
+/public/uploads
+/public/assets
+.byebug_history
+
+# Bundler
+/.bundle/
+/vendor/bundle/
+/lib/bundler/man/
+
+# Spring speeds up development by keeping your application running in the background
+/spring/*.pid
+
+# Redis
+dump.rdb
+
+# Sidekiq
+/sidekiq.log
+
+# Rails logs (in addition to existing log rules)
+/log/*.log
+/log/*.log.*
+
+# Rails cache
+/tmp/cache/
+/tmp/pids/
+/tmp/sockets/
