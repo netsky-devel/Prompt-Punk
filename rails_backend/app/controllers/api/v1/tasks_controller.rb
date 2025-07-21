@@ -8,7 +8,7 @@ class Api::V1::TasksController < Api::BaseController
     if @task.save
       # Enqueue background job based on improvement type
       if @task.single_agent?
-        SingleAgentJob.perform_later(@task.id, provider_config)
+        SingleAgentJob.perform_later(@task.id, provider_config, architecture_config)
       else
         MultiAgentJob.perform_later(@task.id, provider_config)
       end
@@ -108,7 +108,7 @@ class Api::V1::TasksController < Api::BaseController
   def task_params
     params.require(:task).permit(
       :original_prompt, :provider, :ai_model, :improvement_type,
-      :max_rounds, :context, :target_audience
+      :max_rounds, :context, :target_audience, :architecture
     )
   end
 
@@ -117,6 +117,14 @@ class Api::V1::TasksController < Api::BaseController
       provider: params.dig(:task, :provider) || "google",
       model: params.dig(:task, :ai_model) || "gemini-1.5-pro",
       api_key: request.headers["X-API-Key"] || "test_key",
+    }
+  end
+
+  def architecture_config
+    {
+      architecture: params.dig(:task, :architecture) || "auto",
+      context: params.dig(:task, :context),
+      target_audience: params.dig(:task, :target_audience),
     }
   end
 

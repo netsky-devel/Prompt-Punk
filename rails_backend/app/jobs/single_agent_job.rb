@@ -1,49 +1,37 @@
 class SingleAgentJob < ApplicationJob
   queue_as :default
 
-  def perform(task_id, provider_config)
+  def perform(task_id, provider_config, architecture_config = {})
     @task = PromptTask.find(task_id)
-    @provider_config = provider_config
+    @task.update!(status: "processing", started_at: Time.current)
 
-    Rails.logger.info "Starting SingleAgent task ##{@task.id}"
+    Rails.logger.info "SingleAgentJob: Starting task #{task_id} with architecture: #{architecture_config[:architecture]}"
 
-    # Update task status to processing
-    @task.update!(status: :processing)
+    result = improve_prompt(@task.original_prompt, provider_config, architecture_config)
+    save_improvement(result)
 
-    begin
-      # Process the prompt improvement
-      result = improve_prompt
+    @task.update!(status: "completed", completed_at: Time.current)
+    Rails.logger.info "SingleAgentJob: Completed task #{task_id}"
+  rescue => e
+    Rails.logger.error "SingleAgentJob failed for task #{task_id}: #{e.message}"
+    Rails.logger.error e.backtrace.join("\n")
 
-      # Save the improvement
-      save_improvement(result)
-
-      # Mark task as completed
-      @task.update!(status: :completed)
-
-      Rails.logger.info "SingleAgent task ##{@task.id} completed successfully"
-    rescue => e
-      Rails.logger.error "SingleAgent task ##{@task.id} failed: #{e.message}"
-      Rails.logger.error e.backtrace.join("\n")
-
-      @task.update!(
-        status: :failed,
-        error_message: e.message,
-      )
-
-      raise e
-    end
+    @task.update!(
+      status: "failed",
+      completed_at: Time.current,
+      error_message: e.message,
+    )
+    raise
   end
 
   private
 
-  def improve_prompt
+  def improve_prompt(original_prompt, provider_config, architecture_config)
     service = PromptImprovementService.new(
-      original_prompt: @task.original_prompt,
-      provider_config: @provider_config,
-      context: @task.context,
-      target_audience: @task.target_audience,
+      original_prompt: original_prompt,
+      provider_config: provider_config,
+      architecture_config: architecture_config,
     )
-
     service.call
   end
 

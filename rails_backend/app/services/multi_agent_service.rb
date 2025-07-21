@@ -35,8 +35,10 @@ class MultiAgentService
       # Log round progress
       log_round_progress(round, review_result, decision)
 
-      # Make decision
-      case decision[:action]
+      # Make decision based on Lead Agent's strategic analysis
+      decision_action = decision[:decision]&.downcase || decision[:action]&.downcase || "continue"
+
+      case decision_action
       when "approve"
         @session.update!(
           final_decision: "approve",
@@ -44,9 +46,9 @@ class MultiAgentService
         )
 
         return build_success_result(improved_prompt, review_result, decision)
-      when "reject"
+      when "restart"
         @session.update!(
-          final_decision: "reject",
+          final_decision: "restart",
           rounds_completed: round,
         )
 
@@ -64,7 +66,7 @@ class MultiAgentService
       rounds_completed: @max_rounds,
     )
 
-    build_success_result(current_prompt, nil, { action: "approve", reason: "Max rounds reached" })
+    build_success_result(current_prompt, nil, { decision: "approve", reasoning: "Max rounds reached" })
   end
 
   private
@@ -116,8 +118,11 @@ class MultiAgentService
     @session.add_feedback(round, "reviewer", {
       action: "review",
       recommendation: result[:recommendation],
-      strengths: result[:strengths] || [],
-      weaknesses: result[:weaknesses] || [],
+      quality_assessment: result[:quality_assessment] || {},
+      detailed_analysis: result[:detailed_analysis] || {},
+      confidence_level: result[:confidence_level] || 85,
+      feedback: result[:feedback] || "",
+      expected_impact: result[:expected_impact] || "",
       suggestions: result[:suggestions] || [],
       quality_score: result[:quality_score] || 75,
       reasoning: result[:reasoning] || "Quality review completed",
@@ -144,9 +149,13 @@ class MultiAgentService
     # Add to session feedback
     @session.add_feedback(round, "lead_agent", {
       action: "decide",
-      decision: result[:action],
-      reasoning: result[:reason] || "Strategic decision made",
-      confidence: result[:confidence] || "medium",
+      decision: result[:decision],
+      strategic_analysis: result[:strategic_analysis] || {},
+      confidence_level: result[:confidence_level] || 85,
+      reasoning: result[:reasoning] || "Strategic decision made",
+      next_steps: result[:next_steps] || "",
+      expected_outcome: result[:expected_outcome] || "",
+      risk_assessment: result[:risk_assessment] || "",
     })
 
     result
@@ -154,10 +163,10 @@ class MultiAgentService
 
   def log_round_progress(round, review_result, decision)
     Rails.logger.info <<~LOG
-                                                                                                Round #{round} Summary:
+                                                                                                                                                                                                                                                                                                                                          Round #{round} Summary:
       - Review: #{review_result[:recommendation]} (Score: #{review_result[:quality_score]})
       - Decision: #{decision[:action]}
-                                                                                                - Reason: #{decision[:reason]}
+                                                                                                                                                                                                                                                                                                                                          - Reason: #{decision[:reason]}
                       LOG
   end
 
@@ -171,8 +180,8 @@ class MultiAgentService
       session_id: @session.id,
       workflow_summary: {
         total_rounds: @session.rounds_completed,
-        final_decision: decision[:action],
-        decision_reason: decision[:reason],
+        final_decision: decision[:decision] || decision[:action] || "approve",
+        decision_reason: decision[:reasoning] || decision[:reason] || "Multi-agent workflow completed",
         feedback_count: @session.feedback_count,
         collaboration_quality: assess_collaboration_quality,
       },
@@ -189,13 +198,13 @@ class MultiAgentService
       rounds_completed: @session.rounds_completed,
       final_decision: @session.final_decision,
       session_id: @session.id,
-      error_reason: decision[:reason],
+      error_reason: decision[:reasoning] || decision[:reason] || "Workflow terminated",
       workflow_summary: {
         total_rounds: @session.rounds_completed,
-        final_decision: "reject",
-        decision_reason: decision[:reason],
+        final_decision: "restart",
+        decision_reason: decision[:reasoning] || decision[:reason] || "Strategic reset required",
         feedback_count: @session.feedback_count,
-        collaboration_quality: "failed",
+        collaboration_quality: "needs_improvement",
       },
     }
   end
