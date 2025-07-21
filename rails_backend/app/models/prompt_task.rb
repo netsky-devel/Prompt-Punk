@@ -1,13 +1,13 @@
 class PromptTask < ApplicationRecord
   # Enums
-  enum status: {
+  enum :status, {
     pending: 0,
     processing: 1,
     completed: 2,
     failed: 3,
   }
 
-  enum improvement_type: {
+  enum :improvement_type, {
     single_agent: 0,
     multi_agent: 1,
   }
