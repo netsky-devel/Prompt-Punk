@@ -238,7 +238,7 @@ export const AsyncTaskInterface: React.FC<AsyncTaskInterfaceProps> = ({
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="mx-auto space-y-8">
       <div className="card">
         <div className="card-header">
           <div className="section-header">

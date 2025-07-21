@@ -2,7 +2,8 @@ source "https://rubygems.org"
 
 # Core Rails gems
 gem "rails", "~> 8.0.2"
-gem "pg", "~> 1.1"                    # PostgreSQL instead of SQLite for production
+gem "pg", "~> 1.1"                    # PostgreSQL for production
+gem "sqlite3", ">= 2.1"               # SQLite for development/test
 gem "puma", ">= 5.0"
 gem "bootsnap", require: false
 
@@ -59,9 +60,6 @@ group :development, :test do
 end
 
 group :development do
-  # Sidekiq Web UI
-  gem "sidekiq-web"                    # Web UI for job monitoring
-
   # APM & Monitoring (optional)
   # gem "newrelic_rpm"                 # Performance monitoring
   # gem "scout_apm"                    # Alternative APM
