@@ -3,24 +3,32 @@ class SingleAgentJob < ApplicationJob
 
   def perform(task_id, provider_config, architecture_config = {})
     @task = PromptTask.find(task_id)
-    @task.update!(status: "processing", started_at: Time.current)
+    @provider_config = provider_config
+    @architecture_config = architecture_config || {}
 
-    Rails.logger.info "SingleAgentJob: Starting task #{task_id} with architecture: #{architecture_config[:architecture]}"
+    @task.update!(status: :processing, started_at: Time.current)
 
-    result = improve_prompt(@task.original_prompt, provider_config, architecture_config)
+    Rails.logger.info "SingleAgentJob: Starting task #{task_id} with architecture: #{@architecture_config[:architecture]}"
+
+    result = improve_prompt(@task.original_prompt, @provider_config, @architecture_config)
     save_improvement(result)
 
-    @task.update!(status: "completed", completed_at: Time.current)
+    @task.update!(status: :completed, completed_at: Time.current)
     Rails.logger.info "SingleAgentJob: Completed task #{task_id}"
+  rescue ActiveRecord::RecordNotFound => e
+    Rails.logger.error "SingleAgentJob: Task #{task_id} not found: #{e.message}"
+    raise
   rescue => e
     Rails.logger.error "SingleAgentJob failed for task #{task_id}: #{e.message}"
     Rails.logger.error e.backtrace.join("\n")
 
-    @task.update!(
-      status: "failed",
-      completed_at: Time.current,
-      error_message: e.message,
-    )
+    if @task&.persisted?
+      @task.update!(
+        status: :failed,
+        completed_at: Time.current,
+        error_message: e.message,
+      )
+    end
     raise
   end
 
@@ -56,26 +64,36 @@ class SingleAgentJob < ApplicationJob
   end
 
   def extract_improved_prompt(result)
-    # Handle different response formats
+    return "Unable to extract improved prompt" if result.nil? || result.empty?
+
     if result.is_a?(Hash)
-      if result[:improved_prompt].present?
-        return result[:improved_prompt]
-      elsif result["improved_prompt"].present?
-        return result["improved_prompt"]
-      end
+      # Try different possible keys
+      improved = result[:improved_prompt] ||
+                 result["improved_prompt"] ||
+                 result[:prompt] ||
+                 result["prompt"]
+      return improved if improved.present?
     elsif result.is_a?(String)
-      # Try to parse as JSON
+      # If it's already a string, try to parse as JSON first
       begin
         parsed = JSON.parse(result)
-        return parsed["improved_prompt"] if parsed.is_a?(Hash)
+        if parsed.is_a?(Hash)
+          improved = parsed[:improved_prompt] ||
+                     parsed["improved_prompt"] ||
+                     parsed[:prompt] ||
+                     parsed["prompt"]
+          return improved if improved.present?
+        end
+        # Return as is if not valid JSON
+        return result
       rescue JSON::ParserError
         # Return as is if not valid JSON
         return result
       end
     end
 
-    # Fallback
-    result.to_s
+    # Fallback - return proper error message
+    "Unable to extract improved prompt"
   end
 
   def extract_quality_score(result)

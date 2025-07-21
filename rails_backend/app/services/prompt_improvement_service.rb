@@ -10,8 +10,8 @@ class PromptImprovementService
   def call
     Rails.logger.info "PromptImprovementService: Processing with architecture: #{architecture_config[:architecture] || "auto"}"
 
-    # Create AI provider
-    ai_provider = create_ai_provider
+    # Create AI provider with architecture config merged
+    ai_provider = create_ai_provider(provider_config.merge(architecture_config))
 
     # Build the improvement prompt based on selected architecture
     prompt = build_improvement_prompt
@@ -46,47 +46,47 @@ class PromptImprovementService
 
   private
 
-  def create_ai_provider
-    case provider_config[:provider]
+  def create_ai_provider(config)
+    case config[:provider]
     when "openai"
-      create_openai_provider
+      create_openai_provider(config)
     when "anthropic"
-      create_anthropic_provider
+      create_anthropic_provider(config)
     when "google"
-      create_google_provider
+      create_google_provider(config)
     else
-      create_mock_provider
+      create_mock_provider(config)
     end
   end
 
-  def create_openai_provider
+  def create_openai_provider(config)
     require "openai"
 
     OpenAI::Client.new(
-      access_token: @provider_config[:api_key],
+      access_token: config[:api_key],
       request_timeout: 60,
     )
   end
 
-  def create_anthropic_provider
+  def create_anthropic_provider(config)
     require "anthropic"
 
     Anthropic::Client.new(
-      access_token: @provider_config[:api_key],
+      access_token: config[:api_key],
       request_timeout: 60,
     )
   end
 
-  def create_google_provider
+  def create_google_provider(config)
     require "gemini-ai"
 
     Gemini.new(
       credentials: {
         service: "generative-language-api",
-        api_key: @provider_config[:api_key],
+        api_key: config[:api_key],
       },
       options: {
-        model: @provider_config[:model] || "gemini-1.5-pro",
+        model: config[:model] || "gemini-1.5-pro",
         generation_config: {
           temperature: 0.7,
           max_output_tokens: 2000,
@@ -95,8 +95,8 @@ class PromptImprovementService
     )
   end
 
-  def create_mock_provider
-    MockAIProvider.new(@provider_config)
+  def create_mock_provider(config)
+    MockAIProvider.new(config)
   end
 
   def build_improvement_prompt
@@ -398,61 +398,43 @@ class PromptImprovementService
   end
 end
 
-# Mock AI Provider for testing
+# Mock AI Provider for testing without real API calls
 class MockAIProvider
   def initialize(config)
     @config = config
   end
 
-  def chat(params)
-    Rails.logger.info "MockAIProvider: Simulating #{@config[:provider]} response"
-
-    # Simulate different response based on prompt type
-    if params.is_a?(Hash) && params[:type] == "improvement"
-      generate_mock_improvement_response(params[:prompt])
-    else
-      generate_mock_chat_response
-    end
-  end
-
-  private
-
-  def generate_mock_improvement_response(prompt)
-    # Extract original prompt for mock improvement
-    original = prompt.match(/Please improve this prompt:\s*(.+?)(?:\n|$)/m)&.captures&.first || "Sample prompt"
-
-    mock_response = {
+  def chat(system:, user:)
+    # Return a structured JSON response for testing
+    {
       "analysis" => {
-        "main_goal" => "Improve the effectiveness and clarity of the given prompt",
+        "main_goal" => "Mock analysis of the prompt improvement goal",
         "identified_problems" => [
-          "Lack of specific instructions",
-          "Missing context or examples",
-          "Could benefit from clearer structure",
+          "Generic wording needs specificity",
+          "Missing context and constraints",
         ],
-        "improvement_potential" => "Significant enhancement possible through advanced prompt engineering techniques",
+        "improvement_potential" => "High potential for improvement through specificity and structure",
+        "missing_elements" => [
+          "Clear success criteria",
+          "Specific context information",
+        ],
       },
-      "improved_prompt" => "#{original}\n\n[IMPROVED] Please provide a detailed, step-by-step response with examples and clear reasoning.",
+      "improved_prompt" => "#{user}\n\n[Enhanced version with better structure and clarity]",
       "improvements" => {
         "applied_techniques" => [
           {
-            "name" => "Structured Instructions",
-            "description" => "Added clear step-by-step guidance",
-            "expected_effect" => "More organized and comprehensive responses",
+            "name" => "Specificity Enhancement",
+            "description" => "Added specific requirements and constraints",
+            "expected_effect" => "Clearer, more actionable responses (40-60% improvement)",
           },
-          {
-            "name" => "Example Requests",
-            "description" => "Explicitly requested examples",
-            "expected_effect" => "Concrete illustrations to improve understanding",
-          },
+        ],
+        "expected_results" => [
+          "More structured and detailed responses",
+          "Better alignment with user intent",
         ],
         "quality_score" => 85,
       },
-    }
-
-    JSON.generate(mock_response)
-  end
-
-  def generate_mock_chat_response
-    "This is a mock response from #{@config[:provider]} provider. In a real implementation, this would be the actual AI response."
+      "architecture_used" => @config[:architecture] || @config["architecture"] || "auto",
+    }.to_json
   end
 end

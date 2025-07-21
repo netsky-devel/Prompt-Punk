@@ -42,12 +42,10 @@ RSpec.describe PromptImprovementService do
       it "returns structured response with mock data" do
         result = service.call
 
-        expect(result).to include(
-          :improved_prompt,
-          :analysis,
-          :improvements,
-          :architecture_used
-        )
+        expect(result).to include(:analysis, :improved_prompt, :improvements, :architecture_used)
+        expect(result[:analysis]).to include(:main_goal, :identified_problems, :improvement_potential)
+        expect(result[:improvements]).to include(:applied_techniques, :expected_results, :quality_score)
+        expect(result[:improved_prompt]).to include("Create a guide for AI development")
         expect(result[:architecture_used]).to eq("auto")
       end
     end
@@ -168,8 +166,9 @@ RSpec.describe PromptImprovementService do
     end
 
     it "creates mock provider for unknown provider" do
-      provider = service.send(:create_ai_provider)
-      expect(provider).to be_a(PromptImprovementService::MockAIProvider)
+      config = { provider: "unknown", api_key: "test" }
+      provider = service.send(:create_ai_provider, config)
+      expect(provider).to be_a(MockAIProvider)
     end
 
     context "with different provider types" do
@@ -250,23 +249,28 @@ RSpec.describe PromptImprovementService do
   end
 
   describe "MockAIProvider" do
-    let(:mock_provider) { PromptImprovementService::MockAIProvider.new({}) }
+    let(:mock_provider) { MockAIProvider.new({}) }
 
     it "returns valid JSON response" do
-      response = mock_provider.chat(system: "test", user: "test")
-      parsed = JSON.parse(response)
+      response = mock_provider.chat(
+        system: "You are an AI assistant",
+        user: "Test prompt",
+      )
 
-      expect(parsed).to include("analysis", "improved_prompt", "improvements")
-      expect(parsed["analysis"]).to include("main_goal", "identified_problems")
-      expect(parsed["improvements"]).to include("applied_techniques", "quality_score")
+      expect { JSON.parse(response) }.not_to raise_error
     end
 
     it "includes mock improvement text" do
-      response = mock_provider.chat(system: "test", user: "test")
-      parsed = JSON.parse(response)
+      user_prompt = "Write a blog post"
+      response = mock_provider.chat(
+        system: "You are an AI assistant",
+        user: user_prompt,
+      )
 
-      expect(parsed["improved_prompt"]).to include("MOCK IMPROVEMENT")
-      expect(parsed["analysis"]["main_goal"]).to include("Mock analysis")
+      parsed = JSON.parse(response)
+      expect(parsed["improved_prompt"]).to include(user_prompt)
+      expect(parsed["analysis"]).to be_present
+      expect(parsed["improvements"]).to be_present
     end
   end
 end

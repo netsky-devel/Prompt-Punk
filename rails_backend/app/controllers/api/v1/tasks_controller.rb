@@ -17,6 +17,13 @@ class Api::V1::TasksController < Api::BaseController
     else
       render_error("Failed to create task", :unprocessable_entity, @task.errors.full_messages)
     end
+  rescue ArgumentError => e
+    # Handle invalid enum values
+    if e.message.include?("is not a valid")
+      render_error("Invalid parameter value", :unprocessable_entity, [e.message])
+    else
+      raise
+    end
   end
 
   # GET /api/v1/tasks/:id
@@ -130,7 +137,7 @@ class Api::V1::TasksController < Api::BaseController
 
   def task_data(task)
     {
-      id: task.id,
+      task_id: task.id,
       original_prompt: task.original_prompt,
       provider: task.provider,
       ai_model: task.ai_model,
@@ -139,11 +146,12 @@ class Api::V1::TasksController < Api::BaseController
       max_rounds: task.max_rounds,
       context: task.context,
       target_audience: task.target_audience,
+      architecture: task.architecture,
+      created_at: task.created_at,
+      updated_at: task.updated_at,
       started_at: task.started_at,
       completed_at: task.completed_at,
       processing_time: task.processing_time,
-      created_at: task.created_at,
-      updated_at: task.updated_at,
     }
   end
 
@@ -180,7 +188,7 @@ class Api::V1::TasksController < Api::BaseController
 
   def recent_task_data(task)
     data = {
-      id: task.id,
+      task_id: task.id,
       status: task.status,
       improvement_type: task.improvement_type,
       provider: task.provider,

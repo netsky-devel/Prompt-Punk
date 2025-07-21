@@ -60,25 +60,28 @@ RSpec.describe PromptTask, type: :model do
   end
 
   describe "enums" do
-    it { should define_enum_for(:status).with_values(pending: "pending", processing: "processing", completed: "completed", failed: "failed") }
-    it { should define_enum_for(:improvement_type).with_values(single_agent: "single_agent", multi_agent: "multi_agent") }
+    it { should define_enum_for(:status).with_values(pending: 0, processing: 1, completed: 2, failed: 3) }
+    it { should define_enum_for(:improvement_type).with_values(single_agent: 0, multi_agent: 1) }
   end
 
   describe "scopes" do
+    # Create tasks with explicit attributes using enum symbols
     let!(:task1) { create(:prompt_task, :completed, created_at: 1.day.ago) }
     let!(:task2) { create(:prompt_task, :processing, created_at: 2.hours.ago) }
-    let!(:task3) { create(:prompt_task, :pending, created_at: 1.hour.ago) }
+    let!(:task3) { create(:prompt_task, created_at: 1.hour.ago) } # defaults to pending
 
     describe ".recent" do
       it "orders tasks by created_at desc" do
-        expect(PromptTask.recent).to eq([task3, task2, task1])
+        tasks = PromptTask.recent.to_a
+        expect(tasks.map(&:id)).to eq([task3.id, task2.id, task1.id])
       end
     end
 
     describe ".by_status" do
       it "filters tasks by status" do
-        expect(PromptTask.by_status("completed")).to contain_exactly(task1)
-        expect(PromptTask.by_status("processing")).to contain_exactly(task2)
+        expect(PromptTask.by_status(:completed).pluck(:id)).to contain_exactly(task1.id)
+        expect(PromptTask.by_status(:processing).pluck(:id)).to contain_exactly(task2.id)
+        expect(PromptTask.by_status(:pending).pluck(:id)).to contain_exactly(task3.id)
       end
     end
 
@@ -86,8 +89,9 @@ RSpec.describe PromptTask, type: :model do
       let!(:openai_task) { create(:prompt_task, provider: "openai") }
 
       it "filters tasks by provider" do
-        expect(PromptTask.by_provider("openai")).to contain_exactly(openai_task)
-        expect(PromptTask.by_provider("google")).to include(task1, task2, task3)
+        expect(PromptTask.by_provider("openai").pluck(:id)).to contain_exactly(openai_task.id)
+        google_tasks = PromptTask.by_provider("google").pluck(:id)
+        expect(google_tasks).to include(task1.id, task2.id, task3.id)
       end
     end
 
@@ -96,8 +100,8 @@ RSpec.describe PromptTask, type: :model do
       let!(:meta_task) { create(:prompt_task, :meta_cognitive) }
 
       it "filters tasks by architecture" do
-        expect(PromptTask.by_architecture("chain_of_thought")).to contain_exactly(cot_task)
-        expect(PromptTask.by_architecture("meta_cognitive")).to contain_exactly(meta_task)
+        expect(PromptTask.by_architecture("chain_of_thought").pluck(:id)).to contain_exactly(cot_task.id)
+        expect(PromptTask.by_architecture("meta_cognitive").pluck(:id)).to contain_exactly(meta_task.id)
       end
     end
 
@@ -105,9 +109,9 @@ RSpec.describe PromptTask, type: :model do
       let!(:multi_task) { create(:prompt_task, :multi_agent) }
 
       it "filters single agent tasks" do
-        single_tasks = PromptTask.single_agent
-        expect(single_tasks).to include(task1, task2, task3)
-        expect(single_tasks).not_to include(multi_task)
+        single_task_ids = PromptTask.single_agent.pluck(:id)
+        expect(single_task_ids).to include(task1.id, task2.id, task3.id)
+        expect(single_task_ids).not_to include(multi_task.id)
       end
     end
 
@@ -115,7 +119,7 @@ RSpec.describe PromptTask, type: :model do
       let!(:multi_task) { create(:prompt_task, :multi_agent) }
 
       it "filters multi agent tasks" do
-        expect(PromptTask.multi_agent).to contain_exactly(multi_task)
+        expect(PromptTask.multi_agent.pluck(:id)).to contain_exactly(multi_task.id)
       end
     end
   end
@@ -123,7 +127,7 @@ RSpec.describe PromptTask, type: :model do
   describe "callbacks" do
     describe "before_validation :set_defaults" do
       it "sets default values for new single_agent task" do
-        task = PromptTask.new(original_prompt: "Test prompt", improvement_type: "single_agent")
+        task = PromptTask.new(original_prompt: "Test prompt", improvement_type: :single_agent)
         task.valid?
 
         expect(task.status).to eq("pending")
@@ -134,7 +138,7 @@ RSpec.describe PromptTask, type: :model do
       end
 
       it "sets default values for new multi_agent task" do
-        task = PromptTask.new(original_prompt: "Test prompt", improvement_type: "multi_agent")
+        task = PromptTask.new(original_prompt: "Test prompt", improvement_type: :multi_agent)
         task.valid?
 
         expect(task.status).to eq("pending")
@@ -155,74 +159,82 @@ RSpec.describe PromptTask, type: :model do
       end
 
       it "calculates processing time when both times present" do
-        task.update_columns(started_at: 2.hours.ago, completed_at: 1.hour.ago)
-        expect(task.reload.processing_time).to be_within(1.second).of(1.hour)
+        task.update!(started_at: 2.hours.ago, completed_at: 1.hour.ago)
+        expect(task.processing_time).to be_within(1.second).of(1.hour)
       end
     end
 
     describe "#in_progress?" do
       it "returns true for processing status" do
-        task.update_columns(status: "processing")
-        expect(task.reload.in_progress?).to be true
+        task.update!(status: :processing)
+        expect(task.in_progress?).to be true
       end
 
       it "returns false for other statuses" do
+        task.update!(status: :pending)
         expect(task.in_progress?).to be false
       end
     end
 
     describe "#finished?" do
       it "returns true for completed status" do
-        task.update_columns(status: "completed")
-        expect(task.reload.finished?).to be true
+        task.update!(status: :completed)
+        expect(task.finished?).to be true
       end
 
       it "returns true for failed status" do
-        task.update_columns(status: "failed")
-        expect(task.reload.finished?).to be true
+        task.update!(status: :failed)
+        expect(task.finished?).to be true
       end
 
       it "returns false for pending/processing status" do
+        task.update!(status: :pending)
+        expect(task.finished?).to be false
+
+        task.update!(status: :processing)
         expect(task.finished?).to be false
       end
     end
 
     describe "#single_agent?" do
       it "returns true for single_agent type" do
+        task.update!(improvement_type: :single_agent)
         expect(task.single_agent?).to be true
       end
 
       it "returns false for multi_agent type" do
-        task.update_columns(improvement_type: "multi_agent")
-        expect(task.reload.single_agent?).to be false
+        task.update!(improvement_type: :multi_agent)
+        expect(task.single_agent?).to be false
       end
     end
 
     describe "#multi_agent?" do
       it "returns false for single_agent type" do
+        task.update!(improvement_type: :single_agent)
         expect(task.multi_agent?).to be false
       end
 
       it "returns true for multi_agent type" do
-        task.update_columns(improvement_type: "multi_agent")
-        expect(task.reload.multi_agent?).to be true
+        task.update!(improvement_type: :multi_agent)
+        expect(task.multi_agent?).to be true
       end
     end
 
     describe "#architecture_display_name" do
       it "returns nil when no architecture" do
-        task.update_columns(architecture: nil)
-        expect(task.reload.architecture_display_name).to be_nil
+        # Create multi_agent task which doesn't get auto architecture
+        multi_task = create(:prompt_task, :multi_agent)
+        expect(multi_task.architecture_display_name).to be_nil
       end
 
       it "formats architecture name" do
-        task.update_columns(architecture: "chain_of_thought")
-        expect(task.reload.architecture_display_name).to eq("Chain Of Thought")
+        task.update!(architecture: "chain_of_thought")
+        expect(task.architecture_display_name).to eq("Chain Of Thought")
       end
 
       it "formats 5_tier_framework correctly" do
-        task.update_columns(architecture: "5_tier_framework")
-        expect(task.reload.architecture_display_name).to eq("5 Tier Framework")
+        task.update!(architecture: "5_tier_framework")
+        expect(task.architecture_display_name).to eq("5 Tier Framework")
       end
     end
   end

@@ -3,38 +3,38 @@ FactoryBot.define do
     original_prompt { "Create a comprehensive guide for AI prompt engineering" }
     provider { "google" }
     ai_model { "gemini-1.5-pro" }
-    improvement_type { "single_agent" }
-    status { "pending" }
+    improvement_type { :single_agent }
+    status { :pending }
     max_rounds { 5 }
     context { "Professional development context" }
     target_audience { "AI developers and engineers" }
     architecture { "auto" }
 
     trait :single_agent do
-      improvement_type { "single_agent" }
+      improvement_type { :single_agent }
       architecture { "auto" }
       max_rounds { nil }
     end
 
     trait :multi_agent do
-      improvement_type { "multi_agent" }
+      improvement_type { :multi_agent }
       architecture { nil }
       max_rounds { 5 }
     end
 
     trait :processing do
-      status { "processing" }
+      status { :processing }
       started_at { 1.hour.ago }
     end
 
     trait :completed do
-      status { "completed" }
+      status { :completed }
       started_at { 2.hours.ago }
       completed_at { 1.hour.ago }
     end
 
     trait :failed do
-      status { "failed" }
+      status { :failed }
       started_at { 2.hours.ago }
       completed_at { 1.hour.ago }
       error_message { "AI provider error: Invalid API key" }
