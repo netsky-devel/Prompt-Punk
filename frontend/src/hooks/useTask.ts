@@ -2,7 +2,6 @@ import { useCallback } from 'react';
 import { useAppContext } from '../stores/AppContext';
 import { apiClient, ApiClientError } from '../api/client';
 import { validateTaskData } from '../utils/validation';
-import { DEFAULT_SETTINGS } from '../constants';
 import type { CreateTaskRequest, TaskType, PromptArchitecture } from '../types/api';
 
 export const useTask = () => {

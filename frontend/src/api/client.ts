@@ -1,7 +1,6 @@
 import { API_BASE_URL, DEFAULT_SETTINGS } from '../constants';
 import type { 
   ApiResponse, 
-  ApiError, 
   CreateTaskRequest, 
   Task, 
   TaskStatus, 

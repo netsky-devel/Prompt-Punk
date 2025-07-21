@@ -5,8 +5,7 @@ import type {
   ProviderSettings, 
   Task, 
   TaskResult, 
-  RecentTask,
-  AIProvider 
+  RecentTask
 } from '../types/api';
 
 // State Shape

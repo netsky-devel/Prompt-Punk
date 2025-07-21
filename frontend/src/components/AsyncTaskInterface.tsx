@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { LoadingSpinner } from './LoadingSpinner';
 
+/*
 interface ProviderSettings {
   provider: string;
   model_name: string;
   api_key: string;
-  temperature: number;
-  max_tokens: number;
 }
+*/
 
 interface TaskResponse {
   task_id: number;

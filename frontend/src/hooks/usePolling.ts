@@ -31,7 +31,7 @@ export const usePolling = () => {
       const response = await apiClient.getTaskStatus(taskId, state.providerSettings.api_key);
       
       if (response.success && response.data) {
-        const { task, progress } = response.data;
+        const { task } = response.data;
         
         // Update task state
         dispatch({ type: 'SET_CURRENT_TASK', payload: task });
