@@ -48,7 +48,9 @@ class SingleAgentJob < ApplicationJob
   end
 
   def save_improvement(result)
-    processing_time = @task.processing_time || 0
+    processing_time = @task.processing_time
+    # Ensure minimum processing time for validation
+    processing_time = 0.1 if processing_time.nil? || processing_time <= 0
 
     improvement_data = {
       prompt_task: @task,
