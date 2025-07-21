@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_21_204937) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_21_213553) do
   create_table "multi_agent_sessions", force: :cascade do |t|
     t.integer "prompt_task_id", null: false
     t.integer "current_round"
@@ -52,6 +52,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_21_204937) do
     t.text "error_message"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "architecture"
   end
 
   add_foreign_key "multi_agent_sessions", "prompt_tasks"

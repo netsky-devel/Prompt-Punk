@@ -163,10 +163,10 @@ class MultiAgentService
 
   def log_round_progress(round, review_result, decision)
     Rails.logger.info <<~LOG
-                                                                                                                                                                                                                                                                                                                                          Round #{round} Summary:
+                                                                                                                                                                                                                                                                                                                                                            Round #{round} Summary:
       - Review: #{review_result[:recommendation]} (Score: #{review_result[:quality_score]})
       - Decision: #{decision[:action]}
-                                                                                                                                                                                                                                                                                                                                          - Reason: #{decision[:reason]}
+                                                                                                                                                                                                                                                                                                                                                            - Reason: #{decision[:reason]}
                       LOG
   end
 
