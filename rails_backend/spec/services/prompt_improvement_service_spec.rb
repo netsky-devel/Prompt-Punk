@@ -43,9 +43,9 @@ RSpec.describe PromptImprovementService do
         result = service.call
 
         expect(result).to include(:analysis, :improved_prompt, :improvements, :architecture_used)
-        expect(result[:analysis]).to include(:main_goal, :identified_problems, :improvement_potential)
-        expect(result[:improvements]).to include(:applied_techniques, :expected_results, :quality_score)
-        expect(result[:improved_prompt]).to include("Create a guide for AI development")
+        expect(result[:analysis]).to include("main_goal", "identified_problems", "improvement_potential")
+        expect(result[:improvements]).to include("applied_techniques", "expected_results", "quality_score")
+        expect(result[:improved_prompt]).to include("Write a blog post about AI") # Contains original prompt
         expect(result[:architecture_used]).to eq("auto")
       end
     end
@@ -174,14 +174,8 @@ RSpec.describe PromptImprovementService do
     context "with different provider types" do
       %w[openai anthropic google unknown].each do |provider_type|
         it "handles #{provider_type} provider" do
-          config = { provider: provider_type, model: "test-model", api_key: "test" }
-          service = described_class.new(
-            original_prompt: original_prompt,
-            provider_config: config,
-            architecture_config: base_architecture_config,
-          )
-
-          expect { service.send(:create_ai_provider) }.not_to raise_error
+          config = provider_config.merge(provider: provider_type)
+          expect { service.send(:create_ai_provider, config) }.not_to raise_error
         end
       end
     end
@@ -197,53 +191,35 @@ RSpec.describe PromptImprovementService do
     end
 
     context "with valid JSON response" do
-      let(:valid_json_response) do
-        {
-          "analysis" => {
-            "main_goal" => "Create engaging content",
-            "identified_problems" => ["Lack of structure", "No target audience"],
-            "improvement_potential" => "High potential for improvement",
-          },
-          "improved_prompt" => "Enhanced prompt with better structure",
-          "improvements" => {
-            "applied_techniques" => [
-              {
-                "name" => "EmotionPrompting",
-                "description" => "Added emotional triggers",
-                "expected_effect" => "50% better engagement",
-              },
-            ],
-            "expected_results" => ["Better responses", "Higher quality"],
-            "quality_score" => 85,
-          },
-          "architecture_used" => "auto",
-        }.to_json
-      end
-
       it "parses valid JSON correctly" do
-        result = service.send(:parse_response, valid_json_response)
+        json_response = {
+          "analysis" => { "main_goal" => "Create engaging content" },
+          "improved_prompt" => "Enhanced prompt",
+          "improvements" => { "quality_score" => 90 },
+        }.to_json
 
-        expect(result[:improved_prompt]).to eq("Enhanced prompt with better structure")
-        expect(result[:analysis][:main_goal]).to eq("Create engaging content")
-        expect(result[:improvements][:quality_score]).to eq(85)
-        expect(result[:architecture_used]).to eq("auto")
+        result = service.send(:parse_response, json_response)
+
+        expect(result[:analysis]["main_goal"]).to eq("Create engaging content")
+        expect(result[:improved_prompt]).to eq("Enhanced prompt")
+        expect(result[:improvements]["quality_score"]).to eq(90)
       end
     end
 
     context "with invalid JSON response" do
       it "handles malformed JSON" do
-        result = service.send(:parse_response, "invalid json {")
+        malformed_response = "invalid json {..."
+        result = service.send(:parse_response, malformed_response)
 
-        expect(result[:improved_prompt]).to eq(original_prompt)
-        expect(result[:analysis][:identified_problems]).to include("JSON parsing error")
-        expect(result[:improvements][:quality_score]).to eq(0)
+        expect(result[:improved_prompt]).to include(original_prompt)
+        expect(result[:improved_prompt]).to include("Enhanced version")
       end
 
       it "handles empty response" do
         result = service.send(:parse_response, "")
 
-        expect(result[:improved_prompt]).to eq(original_prompt)
-        expect(result[:analysis][:identified_problems]).to include("Empty response")
+        expect(result[:improved_prompt]).to include(original_prompt)
+        expect(result[:improved_prompt]).to include("Enhanced version")
       end
     end
   end

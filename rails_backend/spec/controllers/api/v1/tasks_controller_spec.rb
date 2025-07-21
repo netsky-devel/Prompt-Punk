@@ -111,7 +111,8 @@ RSpec.describe Api::V1::TasksController, type: :controller do
 
         expect(response).to have_http_status(:unprocessable_entity)
         expect(json_response[:success]).to be false
-        expect(json_response[:errors]).to be_present
+        expect(json_response[:error]).to be_present
+        expect(json_response[:details]).to be_present
       end
     end
 
@@ -154,7 +155,8 @@ RSpec.describe Api::V1::TasksController, type: :controller do
       get :show, params: { id: 99999 }
 
       expect(response).to have_http_status(:not_found)
-      expect(json_response[:success]).to be false
+      expect(json_response[:error]).to eq("Record not found")
+      expect(json_response[:message]).to be_present
     end
   end
 
@@ -199,11 +201,9 @@ RSpec.describe Api::V1::TasksController, type: :controller do
       get :result, params: { id: completed_task.id }
 
       expect(response).to have_http_status(:ok)
-      expect(json_response[:data]).to include(
-        :task_id,
-        :status,
-        :result
-      )
+      expect(json_response[:data]).to include(:task, :improvement)
+      expect(json_response[:data][:task]).to include(:task_id, :status)
+      expect(json_response[:data][:improvement]).to include(:improved_prompt, :quality_score)
     end
 
     it "returns error for non-completed task" do
@@ -211,8 +211,9 @@ RSpec.describe Api::V1::TasksController, type: :controller do
 
       get :result, params: { id: pending_task.id }
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:conflict)
       expect(json_response[:success]).to be false
+      expect(json_response[:error]).to be_present
     end
   end
 
@@ -263,8 +264,10 @@ RSpec.describe Api::V1::TasksController, type: :controller do
     it "orders by creation date descending" do
       get :recent
 
-      task_ids = json_response[:data].map { |task| task[:task_id] }
-      expect(task_ids.first).to eq(recent_tasks.last.id) # Most recent first
+      created_ats = json_response[:data].map { |task| Time.parse(task[:created_at]) }
+
+      # Check that tasks are ordered by created_at descending
+      expect(created_ats).to eq(created_ats.sort.reverse)
     end
   end
 
