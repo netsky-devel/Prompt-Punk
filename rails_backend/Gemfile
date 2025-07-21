@@ -1,0 +1,75 @@
+source "https://rubygems.org"
+
+# Core Rails gems
+gem "rails", "~> 8.0.2"
+gem "pg", "~> 1.1"                    # PostgreSQL instead of SQLite for production
+gem "puma", ">= 5.0"
+gem "bootsnap", require: false
+
+# Windows does not include zoneinfo files, so bundle the tzinfo-data gem
+gem "tzinfo-data", platforms: %i[ windows jruby ]
+
+# CORS handling for React frontend
+gem "rack-cors"
+
+# AI & LangChain Integration
+gem "langchainrb", "~> 0.8.0"         # Main LangChain integration
+gem "ruby-openai", "~> 6.0"           # OpenAI API
+gem "anthropic", "~> 0.2.0"           # Anthropic Claude
+gem "gemini-ai", "~> 2.0"             # Google Gemini
+
+# Background Jobs (replacing solid_queue)
+gem "sidekiq", "~> 7.0"               # Background jobs
+gem "redis", "~> 5.0"                 # Sidekiq dependency
+
+# API & Serialization
+gem "jsonapi-serializer"              # Fast JSON API responses
+gem "kaminari"                        # Pagination
+gem "ransack"                         # Search & filtering
+
+# Real-time features
+gem "solid_cable"                     # Keep ActionCable for WebSocket
+
+# Caching
+gem "solid_cache"
+
+# Deployment
+gem "kamal", require: false
+gem "thruster", require: false
+
+group :development, :test do
+  # Debugging
+  gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
+
+  # Testing framework
+  gem "rspec-rails", "~> 6.0"          # Testing framework
+  gem "factory_bot_rails", "~> 6.0"    # Test data factories
+  gem "faker", "~> 3.0"                # Fake data generation
+
+  # Code quality
+  gem "rubocop", "~> 1.50"             # Code style
+  gem "rubocop-rails", "~> 2.19"       # Rails-specific rules
+  gem "rubocop-rspec", "~> 2.20"       # RSpec-specific rules
+  gem "brakeman", require: false       # Security analysis
+
+  # Development tools
+  gem "bullet"                         # N+1 query detection
+  gem "listen", "~> 3.3"               # File watching
+  gem "spring"                         # Application preloader
+end
+
+group :development do
+  # Sidekiq Web UI
+  gem "sidekiq-web"                    # Web UI for job monitoring
+
+  # APM & Monitoring (optional)
+  # gem "newrelic_rpm"                 # Performance monitoring
+  # gem "scout_apm"                    # Alternative APM
+end
+
+group :test do
+  # Test enhancements
+  gem "shoulda-matchers", "~> 5.0"     # Additional matchers
+  gem "webmock", "~> 3.18"             # HTTP request stubbing
+  gem "vcr", "~> 6.1"                  # Record HTTP interactions
+end
