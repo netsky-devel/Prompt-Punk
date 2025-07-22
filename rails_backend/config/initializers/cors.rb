@@ -8,11 +8,12 @@
 Rails.application.config.middleware.insert_before 0, Rack::Cors do
   allow do
     # Allow React frontend in development and production
-    origins "http://localhost:3000", "http://localhost:5173", /https:\/\/.*\.vercel\.app/
+    origins "http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:5173", /https:\/\/.*\.vercel\.app/
 
     resource "*",
-      headers: :any,
+      headers: %w[Authorization Content-Type Accept X-API-Key X-Requested-With],
       methods: [:get, :post, :put, :patch, :delete, :options, :head],
-      credentials: true
+      credentials: true,
+      max_age: 86400  # Cache preflight for 24 hours
   end
 end
