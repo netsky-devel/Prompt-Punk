@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Meta-Prompt Docker Compose Startup Script
+# Prompt Punk Docker Compose Startup Script
 
-echo "🚀 Starting Meta-Prompt Development Environment..."
+echo "🎸 Starting Prompt Punk Development Environment..."
 
 # Stop any existing containers
 echo "📦 Stopping existing containers..."
@@ -28,7 +28,7 @@ echo "Frontend:"
 curl -s -o /dev/null -w "%{http_code}" http://localhost:5173
 
 echo ""
-echo "✅ Meta-Prompt is running!"
+echo "✅ Prompt Punk is running! 🎸"
 echo "🌐 Frontend: http://localhost:5173"
 echo "🔧 Backend API: http://localhost:3000"
 echo "📊 API Health: http://localhost:3000/api/v1/health"

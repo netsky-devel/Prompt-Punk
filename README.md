@@ -52,17 +52,13 @@ Prompt Punk is a cutting-edge multi-agent AI system that transforms your basic p
 ### 1. Clone the Repository
 ```bash
 git clone <repository-url>
-cd meta-prompt
+cd prompt-punk
 ```
 
 ### 2. Set up Environment
 ```bash
 # Copy environment template
 cp .env.docker.example .env.docker
-
-# Add your Gemini API key to .env.docker
-echo "GEMINI_API_KEY=your_api_key_here" >> .env.docker
-```
 
 ### 3. Launch with Docker Compose
 ```bash
@@ -155,7 +151,7 @@ Prompt Punk welcomes contributions! Whether you're fixing bugs, adding features,
 
 ## 📜 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the Creative Commons Attribution 4.0 International License - see the LICENSE file for details.
 
 ## 🎸 Why "Prompt Punk"?
 
@@ -165,4 +161,4 @@ Because your prompts deserve to be rebellious, powerful, and unforgettable. We d
 
 ---
 
-*Built with ❤️ and a rebellious spirit by the Prompt Punk team*
+*Developed as part of the AI Punk project by Netsky*

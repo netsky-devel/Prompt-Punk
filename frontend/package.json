@@ -40,8 +40,8 @@
     "prompt-engineering",
     "ai",
     "gemini",
-    "meta-prompt"
+    "prompt-punk"
   ],
-  "author": "Meta-Prompt Team",
-  "license": "MIT"
+  "author": "Netsky <netsky_devel@proton.me>",
+  "license": "CC-BY-4.0"
 } 
