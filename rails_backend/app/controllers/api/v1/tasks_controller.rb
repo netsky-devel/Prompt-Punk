@@ -7,24 +7,16 @@ class Api::V1::TasksController < Api::BaseController
     @task = PromptTask.new(task_params)
 
     if @task.save
-      # Enqueue background job based on improvement type
-      if @task.single_agent?
-        SingleAgentJob.perform_later(@task.id, provider_config, architecture_config)
-      else
-        MultiAgentJob.perform_later(@task.id, provider_config)
-      end
+      # Always use multi-agent system - it's more powerful
+      Rails.logger.info "Creating task #{@task.id} with multi-agent system"
+      MultiAgentJob.perform_later(@task.id, provider_config, architecture_config)
 
       render_success(task_data(@task), :created)
     else
       render_error("Failed to create task", :unprocessable_entity, @task.errors.full_messages)
     end
   rescue ArgumentError => e
-    # Handle invalid enum values
-    if e.message.include?("is not a valid")
-      render_error("Invalid parameter value", :unprocessable_entity, [e.message])
-    else
-      raise
-    end
+    render_error("Invalid parameters: #{e.message}", :unprocessable_entity)
   end
 
   # GET /api/v1/tasks/:id

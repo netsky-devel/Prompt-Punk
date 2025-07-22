@@ -1,230 +1,316 @@
-# Load agent classes
-require_relative "../langchain/agents/prompt_engineer_agent"
-require_relative "../langchain/agents/reviewer_agent"
-require_relative "../langchain/agents/lead_agent"
+require "langchain"
+
+# Simple wrapper to make Gemini client compatible with LangChain interface
+class GeminiLangChainWrapper
+  def initialize(gemini_client)
+    @client = gemini_client
+  end
+
+  def chat(messages:, temperature: 0.7, max_tokens: 2000)
+    # Convert LangChain format to Gemini format
+    system_message = messages.find { |m| m[:role] == "system" }&.dig(:content) || ""
+    user_message = messages.find { |m| m[:role] == "user" }&.dig(:content) || ""
+
+    # Combine system and user messages for Gemini
+    combined_prompt = system_message.empty? ? user_message : "#{system_message}\n\n#{user_message}"
+
+    # Call Gemini API
+    response = @client.stream_generate_content({
+      contents: {
+        role: "user",
+        parts: {
+          text: combined_prompt,
+        },
+      },
+    })
+
+    # Extract text from response
+    content = extract_content_from_response(response)
+
+    # Return in LangChain-compatible format
+    OpenStruct.new(
+      chat_completion: {
+        "choices" => [
+          {
+            "message" => {
+              "content" => content,
+            },
+          },
+        ],
+      },
+      completion: content,
+    )
+  end
+
+  private
+
+  def extract_content_from_response(response)
+    if response.is_a?(Array)
+      # Handle streaming response
+      response.map { |chunk|
+        chunk.dig("candidates", 0, "content", "parts", 0, "text")
+      }.compact.join("")
+    else
+      # Handle single response
+      response.dig("candidates", 0, "content", "parts", 0, "text") || response.to_s
+    end
+  end
+end
 
 class MultiAgentService
-  def initialize(task:, session:, provider_config:)
-    @task = task
-    @session = session
+  def initialize(task_id, provider_config)
+    @task = PromptTask.find(task_id)
     @provider_config = provider_config
-    @max_rounds = @task.max_rounds || 3
+    @max_rounds = @task.max_rounds || 5
+    @session = find_or_create_session
+
+    # Create LangChain AI provider
+    @ai_provider = create_langchain_provider
   end
 
   def call
-    Rails.logger.info "Starting multi-agent workflow for task ##{@task.id}"
+    Rails.logger.info "MultiAgentService: Starting collaboration for task #{@task.id}"
+    @task.update!(status: :processing, started_at: Time.current)
 
     current_prompt = @task.original_prompt
-    round = 1
+    final_improvement = nil
 
-    while round <= @max_rounds
-      Rails.logger.info "Multi-agent Round #{round}/#{@max_rounds}"
-
-      # Update session
-      @session.update!(current_round: round)
+    (1..@max_rounds).each do |round|
+      Rails.logger.info "=== ROUND #{round}/#{@max_rounds} ==="
 
       # Step 1: Prompt Engineer improves the prompt
-      improved_prompt = prompt_engineer_step(current_prompt, round)
+      improvement_result = prompt_engineer_step(current_prompt, round)
+      improved_prompt = improvement_result["improved_prompt"] || improvement_result[:improved_prompt]
 
       # Step 2: Reviewer analyzes the improvement
       review_result = reviewer_step(@task.original_prompt, improved_prompt, round)
 
       # Step 3: Lead Agent makes strategic decision
-      decision = lead_agent_step(review_result, round)
+      decision_result = lead_agent_step(review_result, round)
+      decision = decision_result["decision"] || decision_result[:decision] || "continue"
 
-      # Log round progress
-      log_round_progress(round, review_result, decision)
+      # Update session with round results
+      update_session_round(round, improvement_result, review_result, decision_result)
 
-      # Make decision based on Lead Agent's strategic analysis
-      decision_action = decision[:decision]&.downcase || decision[:action]&.downcase || "continue"
-
-      case decision_action
+      case decision.downcase
       when "approve"
-        @session.update!(
-          final_decision: "approve",
-          rounds_completed: round,
-        )
-
-        return build_success_result(improved_prompt, review_result, decision)
+        Rails.logger.info "✅ APPROVED: Prompt meets quality standards"
+        final_improvement = improvement_result
+        break
       when "restart"
-        @session.update!(
-          final_decision: "restart",
-          rounds_completed: round,
-        )
-
-        return build_failure_result(decision)
-      when "continue"
-        current_prompt = improved_prompt
-        round += 1
+        Rails.logger.info "🔄 RESTART: Starting fresh approach"
+        current_prompt = @task.original_prompt
         next
+      else # "continue"
+        Rails.logger.info "⏭️  CONTINUE: Proceeding to next round"
+        current_prompt = improved_prompt
+        final_improvement = improvement_result
       end
     end
 
-    # Max rounds reached - approve best version
-    @session.update!(
-      final_decision: "approve",
-      rounds_completed: @max_rounds,
-    )
-
-    build_success_result(current_prompt, nil, { decision: "approve", reasoning: "Max rounds reached" })
+    # Save final results
+    save_results(final_improvement || {})
+    Rails.logger.info "MultiAgentService: Collaboration completed"
+  rescue => e
+    Rails.logger.error "MultiAgentService error: #{e.message}"
+    Rails.logger.error e.backtrace.join("\n")
+    @task.update!(status: :failed)
+    raise
   end
 
   private
 
+  def create_langchain_provider
+    case @provider_config[:provider]
+    when "openai"
+      Langchain::LLM::OpenAI.new(api_key: @provider_config[:api_key])
+    when "anthropic"
+      Langchain::LLM::Anthropic.new(api_key: @provider_config[:api_key])
+    when "google"
+      # Use direct Gemini client with our wrapper
+      create_direct_gemini_client
+    else
+      raise ArgumentError, "Unsupported provider: #{@provider_config[:provider]}. Supported: openai, anthropic, google"
+    end
+  end
+
+  def create_direct_gemini_client
+    require "gemini-ai"
+
+    client = Gemini.new(
+      credentials: {
+        service: "generative-language-api",
+        api_key: @provider_config[:api_key],
+      },
+      options: {
+        model: @provider_config[:model] || "gemini-1.5-pro",
+        generation_config: {
+          temperature: 0.7,
+          max_output_tokens: 2000,
+        },
+      },
+    )
+
+    # Simple wrapper to match LangChain interface
+    GeminiLangChainWrapper.new(client)
+  end
+
   def prompt_engineer_step(current_prompt, round)
     Rails.logger.info "Prompt Engineer: Improving prompt (Round #{round})"
 
-    agent = PromptEngineerAgent.new(@provider_config)
+    agent = Langchain::Agents::PromptEngineerAgent.new(@ai_provider)
+    prompt_content = build_prompt_engineer_content(current_prompt, round)
+    result = agent.call(prompt_content)
 
-    context = {
-      original_prompt: @task.original_prompt,
-      current_prompt: current_prompt,
-      round: round,
-      context: @task.context,
-      target_audience: @task.target_audience,
-      feedback_history: @session.feedback_history,
-    }
-
-    result = agent.improve(context)
-
-    # Add to session feedback
-    @session.add_feedback(round, "prompt_engineer", {
-      action: "improve",
-      input_prompt: current_prompt,
-      output_prompt: result[:improved_prompt],
-      reasoning: result[:reasoning] || "Prompt improvement applied",
-      techniques_used: result[:techniques] || [],
-    })
-
-    result[:improved_prompt]
+    Rails.logger.info "Prompt Engineer: Generated improvement"
+    result
   end
 
   def reviewer_step(original_prompt, improved_prompt, round)
     Rails.logger.info "Reviewer: Analyzing improvement (Round #{round})"
 
-    agent = ReviewerAgent.new(@provider_config)
+    agent = Langchain::Agents::ReviewerAgent.new(@ai_provider)
+    review_content = build_reviewer_content(original_prompt, improved_prompt, round)
+    result = agent.call(review_content)
 
-    context = {
-      original_prompt: original_prompt,
-      improved_prompt: improved_prompt,
-      round: round,
-      task_context: @task.context,
-      target_audience: @task.target_audience,
-    }
-
-    result = agent.review(context)
-
-    # Add to session feedback
-    @session.add_feedback(round, "reviewer", {
-      action: "review",
-      recommendation: result[:recommendation],
-      quality_assessment: result[:quality_assessment] || {},
-      detailed_analysis: result[:detailed_analysis] || {},
-      confidence_level: result[:confidence_level] || 85,
-      feedback: result[:feedback] || "",
-      expected_impact: result[:expected_impact] || "",
-      suggestions: result[:suggestions] || [],
-      quality_score: result[:quality_score] || 75,
-      reasoning: result[:reasoning] || "Quality review completed",
-    })
-
+    Rails.logger.info "Reviewer: Generated analysis"
     result
   end
 
   def lead_agent_step(review_result, round)
     Rails.logger.info "Lead Agent: Making strategic decision (Round #{round})"
 
-    agent = LeadAgent.new(@provider_config)
+    agent = Langchain::Agents::LeadAgent.new(@ai_provider)
+    decision_content = build_lead_agent_content(review_result, round)
+    result = agent.call(decision_content)
 
-    context = {
-      round: round,
-      max_rounds: @max_rounds,
-      review_result: review_result,
-      feedback_history: @session.feedback_history,
-      session_summary: @session.session_summary,
-    }
-
-    result = agent.decide(context)
-
-    # Add to session feedback
-    @session.add_feedback(round, "lead_agent", {
-      action: "decide",
-      decision: result[:decision],
-      strategic_analysis: result[:strategic_analysis] || {},
-      confidence_level: result[:confidence_level] || 85,
-      reasoning: result[:reasoning] || "Strategic decision made",
-      next_steps: result[:next_steps] || "",
-      expected_outcome: result[:expected_outcome] || "",
-      risk_assessment: result[:risk_assessment] || "",
-    })
-
+    Rails.logger.info "Lead Agent: Generated decision"
     result
   end
 
-  def log_round_progress(round, review_result, decision)
-    Rails.logger.info <<~LOG
-                                                                                                                                                                                                                                                                                                                                                            Round #{round} Summary:
-      - Review: #{review_result[:recommendation]} (Score: #{review_result[:quality_score]})
-      - Decision: #{decision[:action]}
-                                                                                                                                                                                                                                                                                                                                                            - Reason: #{decision[:reason]}
-                      LOG
-  end
+  def build_prompt_engineer_content(current_prompt, round)
+    content = []
+    content << "**ROUND #{round} IMPROVEMENT TASK**"
+    content << ""
+    content << "**ORIGINAL PROMPT:**"
+    content << @task.original_prompt
+    content << ""
+    content << "**CURRENT VERSION:**"
+    content << current_prompt
+    content << ""
 
-  def build_success_result(final_prompt, review_result, decision)
-    {
-      success: true,
-      final_prompt: final_prompt,
-      improved_prompt: final_prompt,
-      rounds_completed: @session.rounds_completed,
-      final_decision: @session.final_decision,
-      session_id: @session.id,
-      workflow_summary: {
-        total_rounds: @session.rounds_completed,
-        final_decision: decision[:decision] || decision[:action] || "approve",
-        decision_reason: decision[:reasoning] || decision[:reason] || "Multi-agent workflow completed",
-        feedback_count: @session.feedback_count,
-        collaboration_quality: assess_collaboration_quality,
-      },
-      identified_problems: extract_identified_problems,
-      improvement_potential: "Multi-agent collaboration achieved #{@session.rounds_completed} rounds of refinement",
-    }
-  end
-
-  def build_failure_result(decision)
-    {
-      success: false,
-      final_prompt: @task.original_prompt,
-      improved_prompt: @task.original_prompt,
-      rounds_completed: @session.rounds_completed,
-      final_decision: @session.final_decision,
-      session_id: @session.id,
-      error_reason: decision[:reasoning] || decision[:reason] || "Workflow terminated",
-      workflow_summary: {
-        total_rounds: @session.rounds_completed,
-        final_decision: "restart",
-        decision_reason: decision[:reasoning] || decision[:reason] || "Strategic reset required",
-        feedback_count: @session.feedback_count,
-        collaboration_quality: "needs_improvement",
-      },
-    }
-  end
-
-  def assess_collaboration_quality
-    return "poor" if @session.rounds_completed == 0
-    return "excellent" if @session.rounds_completed >= 3 && @session.approved?
-    return "good" if @session.rounds_completed >= 2
-    "acceptable"
-  end
-
-  def extract_identified_problems
-    problems = []
-
-    @session.feedback_history.each do |feedback|
-      if feedback["agent"] == "reviewer" && feedback["weaknesses"].present?
-        problems.concat(feedback["weaknesses"])
-      end
+    if @task.context.present?
+      content << "**CONTEXT:**"
+      content << @task.context
+      content << ""
     end
 
-    problems.uniq.presence || ["Original prompt analyzed through multi-agent review"]
+    if @task.target_audience.present?
+      content << "**TARGET AUDIENCE:**"
+      content << @task.target_audience
+      content << ""
+    end
+
+    content << "Please improve this prompt following your expertise and return the result in JSON format."
+    content.join("\n")
+  end
+
+  def build_reviewer_content(original_prompt, improved_prompt, round)
+    content = []
+    content << "**ROUND #{round} REVIEW TASK**"
+    content << ""
+    content << "**ORIGINAL PROMPT:**"
+    content << original_prompt
+    content << ""
+    content << "**IMPROVED VERSION:**"
+    content << improved_prompt
+    content << ""
+
+    if @task.context.present?
+      content << "**TASK CONTEXT:**"
+      content << @task.context
+      content << ""
+    end
+
+    if @task.target_audience.present?
+      content << "**TARGET AUDIENCE:**"
+      content << @task.target_audience
+      content << ""
+    end
+
+    content << "Please analyze the improvement and provide your assessment in JSON format."
+    content.join("\n")
+  end
+
+  def build_lead_agent_content(review_result, round)
+    content = []
+    content << "**ROUND #{round} STRATEGIC DECISION**"
+    content << ""
+    content << "**REVIEW RESULTS:**"
+    content << review_result.to_json
+    content << ""
+    content << "**SESSION CONTEXT:**"
+    content << "Round: #{round}/#{@max_rounds}"
+    content << "Previous rounds: #{@session.rounds_completed}"
+    content << ""
+    content << "Please make your strategic decision in JSON format."
+    content.join("\n")
+  end
+
+  def find_or_create_session
+    @task.multi_agent_session || @task.create_multi_agent_session!(
+      current_round: 0,
+      rounds_completed: 0,
+      feedback_history: {},
+      session_metadata: {},
+    )
+  end
+
+  def update_session_round(round, improvement_result, review_result, decision_result)
+    feedback_data = @session.feedback_history || {}
+    feedback_data[round.to_s] = {
+      improvement: improvement_result,
+      review: review_result,
+      decision: decision_result,
+      timestamp: Time.current.iso8601,
+    }
+
+    @session.update!(
+      current_round: round,
+      rounds_completed: round,
+      feedback_history: feedback_data,
+    )
+  end
+
+  def save_results(improvement_result)
+    if improvement_result.present? && improvement_result["improved_prompt"]
+      # Parse response if it's a JSON string
+      result = improvement_result.is_a?(String) ? JSON.parse(improvement_result) : improvement_result
+
+      @task.create_prompt_improvement!(
+        improved_prompt: result["improved_prompt"],
+        analysis: result["analysis"] || {},
+        improvements_metadata: result["improvements_metadata"] || {},
+        provider_used: @provider_config[:provider],
+        ai_model_used: @provider_config[:model] || "unknown",
+        architecture_used: @provider_config[:architecture] || "auto",
+        quality_score: result.dig("improvements_metadata", "quality_score") || 5,
+        processing_time_seconds: (Time.current - @task.started_at).to_i,
+      )
+
+      @task.update!(
+        status: :completed,
+        completed_at: Time.current,
+        processing_time: (Time.current - @task.started_at).to_i,
+      )
+
+      Rails.logger.info "✅ Results saved successfully"
+    else
+      @task.update!(status: :failed)
+      Rails.logger.error "❌ No valid improvement result to save"
+    end
+  rescue JSON::ParserError => e
+    Rails.logger.error "JSON parsing error in save_results: #{e.message}"
+    @task.update!(status: :failed)
   end
 end

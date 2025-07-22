@@ -1,432 +1,146 @@
-class ReviewerAgent
-  def initialize(provider_config)
-    @provider_config = provider_config
-    @ai_provider = create_ai_provider
-  end
+module Langchain
+  module Agents
+    class ReviewerAgent
+      SYSTEM_PROMPT = <<~PROMPT
+        You are a **WORLD-CLASS PROMPT QUALITY ANALYST** with 15+ years of experience in AI system optimization and prompt effectiveness evaluation.
 
-  def review(context)
-    Rails.logger.info "ReviewerAgent: Analyzing prompt quality for round #{context[:round]}"
+        Your expertise includes:
+        - Advanced prompt engineering methodologies and best practices
+        - Deep understanding of AI model behavior and response optimization
+        - Comprehensive quality assessment frameworks and metrics
+        - Expert knowledge of prompt effectiveness across different AI models and use cases
 
-    prompt = build_review_prompt(context)
-    response = @ai_provider.chat(prompt)
+        ## YOUR EXPERT MISSION
 
-    parse_review_response(response)
-  end
+        As a **SENIOR QUALITY ANALYST**, conduct a comprehensive evaluation of prompt improvements using your world-class expertise:
 
-  private
+        ## COMPREHENSIVE EVALUATION FRAMEWORK
 
-  def create_ai_provider
-    case @provider_config[:provider]
-    when "openai"
-      create_openai_provider
-    when "anthropic"
-      create_anthropic_provider
-    when "google"
-      create_google_provider
-    else
-      create_mock_provider
-    end
-  end
+        ### 1. Technical Quality Assessment (40%)
+        - **Clarity & Precision**: How clear and unambiguous are the instructions?
+        - **Structure & Organization**: Is the prompt well-organized and logically structured?
+        - **Completeness**: Does it include all necessary information and context?
+        - **Specificity**: Are the requirements and expectations clearly defined?
 
-  def create_openai_provider
-    require "openai"
-    OpenAI::Client.new(
-      access_token: @provider_config[:api_key],
-      request_timeout: 60,
-    )
-  end
+        ### 2. AI Optimization Analysis (30%)
+        - **Model Compatibility**: How well optimized is this for AI model behavior?
+        - **Response Guidance**: Does it effectively guide the AI toward desired outputs?
+        - **Context Utilization**: How effectively does it leverage available context?
+        - **Output Control**: Does it provide appropriate constraints and formatting guidance?
 
-  def create_anthropic_provider
-    require "anthropic"
-    Anthropic::Client.new(
-      access_token: @provider_config[:api_key],
-      request_timeout: 60,
-    )
-  end
+        ### 3. Effectiveness & Impact (20%)
+        - **Goal Alignment**: How well does it align with the stated objectives?
+        - **User Value**: What value does this provide to the end user?
+        - **Practical Utility**: How useful is this in real-world applications?
+        - **Results Quality**: What quality of responses can be expected?
 
-  def create_google_provider
-    require "gemini-ai"
-    Gemini.new(
-      credentials: {
-        service: "generative-language-api",
-        api_key: @provider_config[:api_key],
-      },
-      options: {
-        model: @provider_config[:model] || "gemini-1.5-pro",
-        generation_config: {
-          temperature: 0.3,
-          max_output_tokens: 1500,
-        },
-      },
-    )
-  end
+        ### 4. Innovation & Best Practices (10%)
+        - **Technique Integration**: Are modern prompt engineering techniques properly applied?
+        - **Creative Enhancement**: Does it show innovative approaches to prompt design?
+        - **Scalability**: How well will this work across different contexts and use cases?
 
-  def create_mock_provider
-    MockReviewerProvider.new(@provider_config)
-  end
+        ## QUALITY SCORING RUBRIC (0-100 scale)
 
-  def build_review_prompt(context)
-    system_prompt = <<~PROMPT
-      You are a **WORLD-CLASS PROMPT QUALITY ANALYST** with 15+ years of experience in AI system optimization and prompt effectiveness evaluation.
+        - **90-100**: Revolutionary - Exceptional quality, production-ready, industry-leading
+        - **80-89**: Excellent - High quality with minor improvements possible
+        - **70-79**: Good - Solid quality with moderate enhancement opportunities
+        - **60-69**: Acceptable - Basic quality with significant improvement needed
+        - **50-59**: Below Average - Major issues requiring substantial revision
+        - **0-49**: Poor - Fundamental problems requiring complete rework
 
-      Your expertise includes:
-      - Advanced psycholinguistic analysis and cognitive load assessment
-      - Deep knowledge of prompt engineering effectiveness metrics
-      - Mastery of persuasion psychology and behavioral triggers
-      - Extensive experience in Fortune 500 AI system evaluations
+        ## RECOMMENDATION FRAMEWORK
 
-      ## YOUR CRITICAL MISSION (Round #{context[:round]})
+        ### APPROVE (85+ score, ready for production)
+        - Exceptional quality achieved
+        - All major requirements met
+        - Minor or no improvements needed
+        - Ready for immediate deployment
 
-      As the **EXPERT REVIEWER** in this elite multi-agent team, conduct a **COMPREHENSIVE QUALITY ANALYSIS** of the Prompt Engineer's work:
+        ### CONTINUE (60-84 score, improvement beneficial)
+        - Good foundation with enhancement potential
+        - Specific areas identified for improvement
+        - Additional iteration will yield significant benefits
+        - Clear improvement path available
 
-      ## ADVANCED EVALUATION FRAMEWORK
+        ### RESTART (below 60 score, fundamental issues)
+        - Major structural or quality problems
+        - Current approach unlikely to succeed
+        - Fresh perspective and new approach needed
+        - Complete rework recommended
 
-      ### 1. Technical Excellence Assessment (30%)
-      - **Clarity & Specificity**: Are instructions crystal clear and unambiguous?
-      - **Structure Quality**: Does the prompt follow logical organization patterns?
-      - **Completeness**: Are all necessary elements present for optimal AI response?
-      - **Context Sufficiency**: Is enough background provided for accurate understanding?
+        Your response must be JSON:
+        {
+          "quality_assessment": {
+            "overall_score": 85,
+            "technical_quality": 88,
+            "ai_optimization": 82,
+            "effectiveness": 87,
+            "innovation": 80
+          },
+          "detailed_analysis": {
+            "strengths": ["Specific strength 1", "Specific strength 2"],
+            "weaknesses": ["Specific weakness 1", "Specific weakness 2"],
+            "improvement_areas": ["Area 1", "Area 2"],
+            "missing_elements": ["Element 1", "Element 2"]
+          },
+          "recommendation": "APPROVE | CONTINUE | RESTART",
+          "confidence_level": 92,
+          "feedback": "Detailed professional feedback on the prompt quality and specific recommendations",
+          "expected_impact": "Quantified prediction of improvement impact (e.g., 40% better response quality)",
+          "suggestions": ["Specific actionable suggestion 1", "Specific actionable suggestion 2"]
+        }
 
-      ### 2. Advanced Technique Integration (30%)
-      - **EmotionPrompting**: Are emotional stimuli effectively integrated?
-      - **Chain-of-Thought**: Is logical reasoning properly structured?
-      - **Meta-cognitive Elements**: Are self-reflection prompts included?
-      - **Cutting-edge 2024-2025**: Are latest techniques properly applied?
-      - **Psychological Triggers**: Are influence techniques appropriately used?
+        **PROVIDE EXPERT-LEVEL QUALITY ANALYSIS WITH ACTIONABLE INSIGHTS!**
+      PROMPT
 
-      ### 3. Effectiveness Prediction (25%)
-      - **Response Quality Potential**: Will this produce 3-5x better results?
-      - **Ambiguity Elimination**: Are all potential misinterpretations removed?
-      - **Action-oriented Design**: Does it guide AI toward specific, valuable outputs?
-      - **Scalability**: Will this work across different contexts and AI models?
-
-      ### 4. Innovation & Creativity (15%)
-      - **Novel Approaches**: Are creative prompt engineering solutions used?
-      - **Cutting-edge Integration**: Are latest 2024-2025 techniques properly leveraged?
-      - **Unique Value**: What makes this prompt exceptional vs. standard approaches?
-
-      ## COLLABORATION CONTEXT
-      - Original Prompt: #{context[:original_prompt] || "Not provided"}
-      - Current Round: #{context[:round]}
-      - Previous Feedback: #{context[:previous_feedback] || "First round"}
-      - Prompt Engineer's Latest Work: Will be provided in user content
-
-      ## QUALITY SCORING RUBRIC
-      - **90-100**: Revolutionary - Dramatically exceeds expectations
-      - **80-89**: Excellent - Significant improvements with advanced techniques  
-      - **70-79**: Good - Solid improvements but missing some advanced elements
-      - **60-69**: Acceptable - Basic improvements, needs more sophistication
-      - **50-59**: Needs Work - Limited improvements, major gaps remain
-      - **Below 50**: Inadequate - Requires substantial rework
-
-      ## CRITICAL ANALYSIS REQUIREMENTS
-
-      1. **MEASURABLE IMPACT**: Provide specific metrics for expected improvements
-      2. **TECHNIQUE VALIDATION**: Verify proper application of advanced methods
-      3. **GAP IDENTIFICATION**: Identify missing elements that could enhance quality
-      4. **ACTIONABLE FEEDBACK**: Give precise, implementable recommendations
-
-      Your response must be JSON:
-      {
-        "quality_assessment": {
-          "overall_score": 85,
-          "technical_excellence": 90,
-          "technique_integration": 80,
-          "effectiveness_prediction": 85,
-          "innovation_creativity": 80
-        },
-        "detailed_analysis": {
-          "strengths": ["List specific strengths with examples"],
-          "identified_issues": ["Specific problems that need addressing"],
-          "missing_elements": ["Advanced techniques that should be added"],
-          "improvement_opportunities": ["Specific ways to enhance the prompt"]
-        },
-        "recommendation": "APPROVE_WITH_NOTES | NEEDS_REVISION | APPROVE",
-        "confidence_level": 95,
-        "feedback": "Detailed, actionable feedback for the Prompt Engineer focusing on specific improvements",
-        "expected_impact": "Quantified prediction of response quality improvement (e.g., 250% better clarity, 400% more actionable)"
-      }
-
-      **CONDUCT WORLD-CLASS ANALYSIS THAT ENSURES REVOLUTIONARY PROMPT QUALITY!**
-    PROMPT
-
-    user_content = build_user_content(context)
-
-    format_prompt_for_provider(system_prompt, user_content)
-  end
-
-  def build_user_content(context)
-    content = []
-
-    content << "**ROUND #{context[:round]} REVIEW**"
-    content << ""
-
-    content << "**ORIGINAL PROMPT:**"
-    content << context[:original_prompt]
-    content << ""
-
-    content << "**IMPROVED VERSION:**"
-    content << context[:improved_prompt]
-    content << ""
-
-    if context[:task_context].present?
-      content << "**TASK CONTEXT:**"
-      content << context[:task_context]
-      content << ""
-    end
-
-    if context[:target_audience].present?
-      content << "**TARGET AUDIENCE:**"
-      content << context[:target_audience]
-      content << ""
-    end
-
-    content << "Please analyze the improvement and provide your assessment in JSON format."
-    content << "Focus on whether the changes enhance clarity, specificity, and effectiveness."
-
-    content.join("\n")
-  end
-
-  def format_prompt_for_provider(system_prompt, user_content)
-    case @provider_config[:provider]
-    when "openai"
-      {
-        model: @provider_config[:model] || "gpt-4",
-        messages: [
-          { role: "system", content: system_prompt },
-          { role: "user", content: user_content },
-        ],
-        temperature: 0.3,
-        max_tokens: 1500,
-      }
-    when "anthropic"
-      {
-        model: @provider_config[:model] || "claude-3-sonnet-20240229",
-        messages: [
-          { role: "user", content: "#{system_prompt}\n\n#{user_content}" },
-        ],
-        max_tokens: 1500,
-      }
-    when "google"
-      {
-        contents: [{
-          parts: [{
-            text: "#{system_prompt}\n\n#{user_content}",
-          }],
-        }],
-      }
-    else
-      {
-        prompt: "#{system_prompt}\n\n#{user_content}",
-        type: "reviewer",
-        context: user_content,
-      }
-    end
-  end
-
-  def parse_review_response(response)
-    response_text = extract_response_text(response)
-
-    Rails.logger.info "Reviewer response: #{response_text[0..200]}..."
-
-    begin
-      parsed = JSON.parse(response_text)
-
-      if parsed.is_a?(Hash) && parsed["recommendation"].present?
-        return {
-                 recommendation: parsed["recommendation"],
-                 quality_score: parsed["quality_score"] || calculate_default_score(parsed["recommendation"]),
-                 strengths: parsed["strengths"] || [],
-                 weaknesses: parsed["weaknesses"] || [],
-                 suggestions: parsed["suggestions"] || [],
-                 reasoning: parsed["reasoning"] || "Quality assessment completed",
-               }
+      def initialize(llm)
+        @llm = llm
       end
-    rescue JSON::ParserError => e
-      Rails.logger.warn "Failed to parse Reviewer JSON: #{e.message}"
-    end
 
-    # Fallback parsing
-    fallback_parse_response(response_text)
-  end
+      def call(prompt)
+        Rails.logger.info "ReviewerAgent: Processing review"
 
-  def extract_response_text(response)
-    case @provider_config[:provider]
-    when "openai"
-      response.dig("choices", 0, "message", "content") || response.to_s
-    when "anthropic"
-      response.dig("content", 0, "text") || response.to_s
-    when "google"
-      response.dig("candidates", 0, "content", "parts", 0, "text") || response.to_s
-    else
-      response.is_a?(String) ? response : response.to_s
-    end
-  end
+        # Use LangChain's chat method
+        response = @llm.chat(
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: prompt },
+          ],
+          temperature: 0.3,
+          max_tokens: 1500,
+        )
 
-  def fallback_parse_response(text)
-    # Try to extract recommendation from text
-    recommendation = "APPROVE_WITH_NOTES" # Default
+        # Extract content from LangChain response
+        content = response.chat_completion.dig("choices", 0, "message", "content") ||
+                  response.completion ||
+                  response.to_s
 
-    if text.upcase.include?("REJECT")
-      recommendation = "REJECT"
-    elsif text.upcase.include?("NEEDS_IMPROVEMENT")
-      recommendation = "NEEDS_IMPROVEMENT"
-    elsif text.upcase.include?("APPROVE_WITH_NOTES")
-      recommendation = "APPROVE_WITH_NOTES"
-    elsif text.upcase.include?("APPROVE")
-      recommendation = "APPROVE"
-    end
+        # Parse the response (it might be JSON string or already parsed)
+        result = content.is_a?(String) ? JSON.parse(content) : content
 
-    {
-      recommendation: recommendation,
-      quality_score: calculate_default_score(recommendation),
-      strengths: ["Prompt analysis attempted"],
-      weaknesses: ["Could benefit from further review"],
-      suggestions: ["Consider additional improvements"],
-      reasoning: "Automated quality assessment based on text analysis",
-    }
-  end
+        Rails.logger.info "ReviewerAgent: Generated review"
+        result
+      rescue JSON::ParserError => e
+        Rails.logger.error "ReviewerAgent: JSON parsing error - #{e.message}"
+        Rails.logger.error "Raw response: #{content}"
 
-  def calculate_default_score(recommendation)
-    case recommendation
-    when "APPROVE" then 95
-    when "APPROVE_WITH_NOTES" then 80
-    when "NEEDS_IMPROVEMENT" then 65
-    when "REJECT" then 45
-    else 75
-    end
-  end
-end
+        # Return a fallback response
+        {
+          "feedback" => "Unable to provide feedback due to parsing error: #{e.message}",
+          "quality_score" => 0,
+          "recommendation" => "retry",
+        }
+      rescue => e
+        Rails.logger.error "ReviewerAgent: Error - #{e.message}"
+        Rails.logger.error e.backtrace.join("\n")
 
-# Mock Provider for ReviewerAgent
-class MockReviewerProvider
-  def initialize(config)
-    @config = config
-  end
-
-  def chat(params)
-    Rails.logger.info "MockReviewerProvider: Simulating quality review"
-
-    # Extract context for mock analysis
-    context = params[:context] || ""
-    round = extract_round(context)
-
-    # Simulate different recommendations based on round
-    recommendation = determine_mock_recommendation(round)
-
-    mock_response = {
-      "recommendation" => recommendation,
-      "quality_score" => calculate_mock_score(recommendation),
-      "strengths" => generate_mock_strengths(recommendation),
-      "weaknesses" => generate_mock_weaknesses(recommendation),
-      "suggestions" => generate_mock_suggestions(recommendation),
-      "reasoning" => generate_mock_reasoning(recommendation, round),
-    }
-
-    JSON.generate(mock_response)
-  end
-
-  private
-
-  def extract_round(context)
-    match = context.match(/\*\*ROUND (\d+) REVIEW\*\*/)
-    match ? match[1].to_i : 1
-  end
-
-  def determine_mock_recommendation(round)
-    case round
-    when 1
-      "APPROVE_WITH_NOTES"
-    when 2
-      ["APPROVE_WITH_NOTES", "APPROVE"].sample
-    else
-      "APPROVE"
-    end
-  end
-
-  def calculate_mock_score(recommendation)
-    case recommendation
-    when "APPROVE" then 92
-    when "APPROVE_WITH_NOTES" then 78
-    when "NEEDS_IMPROVEMENT" then 62
-    when "REJECT" then 45
-    else 75
-    end
-  end
-
-  def generate_mock_strengths(recommendation)
-    strengths = [
-      "Clear instruction structure",
-      "Appropriate level of detail",
-      "Good context provision",
-    ]
-
-    if recommendation == "APPROVE"
-      strengths << "Excellent specificity and clarity"
-      strengths << "Well-defined expected outcomes"
-    end
-
-    strengths
-  end
-
-  def generate_mock_weaknesses(recommendation)
-    return [] if recommendation == "APPROVE"
-
-    weaknesses = []
-
-    if recommendation.include?("NOTES") || recommendation == "NEEDS_IMPROVEMENT"
-      weaknesses << "Could benefit from more specific examples"
-      weaknesses << "Some ambiguity in requirements"
-    end
-
-    if recommendation == "REJECT"
-      weaknesses << "Lacks clear structure"
-      weaknesses << "Missing essential context"
-      weaknesses << "Ambiguous instructions"
-    end
-
-    weaknesses
-  end
-
-  def generate_mock_suggestions(recommendation)
-    return [] if recommendation == "APPROVE"
-
-    suggestions = []
-
-    if recommendation.include?("NOTES")
-      suggestions << "Add specific examples to illustrate key points"
-      suggestions << "Consider breaking complex instructions into steps"
-    end
-
-    if recommendation == "NEEDS_IMPROVEMENT"
-      suggestions << "Restructure for better clarity"
-      suggestions << "Add more context about expected output"
-      suggestions << "Define technical terms explicitly"
-    end
-
-    if recommendation == "REJECT"
-      suggestions << "Complete restructure needed"
-      suggestions << "Add comprehensive context"
-      suggestions << "Define clear success criteria"
-    end
-
-    suggestions
-  end
-
-  def generate_mock_reasoning(recommendation, round)
-    base = "Round #{round} analysis: "
-
-    case recommendation
-    when "APPROVE"
-      base + "The prompt has reached excellent quality standards with clear instructions, appropriate context, and well-defined expectations."
-    when "APPROVE_WITH_NOTES"
-      base + "Good overall quality with effective improvements, though minor enhancements could further optimize clarity and specificity."
-    when "NEEDS_IMPROVEMENT"
-      base + "While showing progress, the prompt requires additional refinement to achieve optimal clarity and effectiveness."
-    when "REJECT"
-      base + "Significant issues remain that prevent effective use. Major restructuring recommended."
-    else
-      base + "Quality assessment completed with mixed results."
+        # Return a fallback response
+        {
+          "feedback" => "Error occurred during review: #{e.message}",
+          "quality_score" => 0,
+          "recommendation" => "retry",
+        }
+      end
     end
   end
 end
