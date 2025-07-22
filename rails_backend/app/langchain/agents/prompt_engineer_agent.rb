@@ -8,23 +8,53 @@ module Langchain
       def call(prompt)
         Rails.logger.info "PromptEngineerAgent: Processing prompt improvement"
 
-        # Use LangChain's chat method
+        # Build context for prompt improvement
+        context = {
+          round: 1,
+          original_prompt: prompt,
+          target_audience: "general",
+          context: "prompt improvement"
+        }
+        
+        # Build the improvement prompt with system and user content
+        formatted_prompt = build_improvement_prompt(context)
+        
+        # Use LangChain's chat method with formatted prompt
         response = @llm.chat(
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: prompt },
+          messages: formatted_prompt[:messages] || [
+            { role: "system", content: formatted_prompt[:system_prompt] || formatted_prompt },
+            { role: "user", content: formatted_prompt[:user_content] || prompt }
           ],
           temperature: 0.7,
           max_tokens: 2000,
         )
 
-        # Extract content from LangChain response
-        content = response.chat_completion.dig("choices", 0, "message", "content") ||
-                  response.completion ||
-                  response.to_s
+        # Extract content from LangChain response (handle different API formats)
+        content = nil
+        
+        # Try different response formats
+        if response.respond_to?(:chat_completion) && response.chat_completion
+          # OpenAI/Anthropic format
+          content = response.chat_completion.dig("choices", 0, "message", "content")
+        elsif response.respond_to?(:completion) && response.completion
+          # Direct completion format (Gemini)
+          content = response.completion
+        else
+          # Fallback to string conversion
+          content = response.to_s
+        end
+        
+        # Ensure we have content
+        content = content.to_s.strip
+        if content.empty?
+          raise "Empty response from AI provider"
+        end
 
+        # Clean markdown formatting from Gemini responses
+        cleaned_content = clean_markdown_json(content)
+        
         # Parse the response (it might be JSON string or already parsed)
-        result = content.is_a?(String) ? JSON.parse(content) : content
+        result = cleaned_content.is_a?(String) ? JSON.parse(cleaned_content) : cleaned_content
 
         Rails.logger.info "PromptEngineerAgent: Generated improvement"
         result
@@ -67,6 +97,23 @@ module Langchain
       end
 
       private
+
+      def clean_markdown_json(content)
+        return content unless content.is_a?(String)
+        
+        # Remove markdown code block formatting
+        cleaned = content.strip
+        
+        # Remove ```json and ``` markers
+        cleaned = cleaned.gsub(/^```json\s*\n?/, '')
+        cleaned = cleaned.gsub(/\n?```\s*$/, '')
+        
+        # Remove any leading/trailing whitespace
+        cleaned = cleaned.strip
+        
+        Rails.logger.debug "Cleaned content: #{cleaned[0..200]}..."
+        cleaned
+      end
 
       def create_ai_provider
         # Reuse the same provider creation logic from PromptImprovementService

@@ -52,6 +52,9 @@ group :development, :test do
   gem "rubocop-rails", "~> 2.19"       # Rails-specific rules
   gem "rubocop-rspec", "~> 2.20"       # RSpec-specific rules
   gem "brakeman", require: false       # Security analysis
+  gem "rubocop-rails-omakase", require: false
+  gem "pry", "~> 0.14"  # Added for debugging
+  gem "pry-rails", "~> 0.3"  # Rails integration for pry
 
   # Development tools
   gem "bullet"                         # N+1 query detection

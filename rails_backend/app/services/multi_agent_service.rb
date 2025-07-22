@@ -1,4 +1,8 @@
 require "langchain"
+require "ostruct"
+require_relative "../langchain/agents/prompt_engineer_agent"
+require_relative "../langchain/agents/reviewer_agent"
+require_relative "../langchain/agents/lead_agent"
 
 # Simple wrapper to make Gemini client compatible with LangChain interface
 class GeminiLangChainWrapper
@@ -7,12 +11,14 @@ class GeminiLangChainWrapper
   end
 
   def chat(messages:, temperature: 0.7, max_tokens: 2000)
+
     # Convert LangChain format to Gemini format
     system_message = messages.find { |m| m[:role] == "system" }&.dig(:content) || ""
     user_message = messages.find { |m| m[:role] == "user" }&.dig(:content) || ""
 
     # Combine system and user messages for Gemini
     combined_prompt = system_message.empty? ? user_message : "#{system_message}\n\n#{user_message}"
+
 
     # Call Gemini API
     response = @client.stream_generate_content({
@@ -23,6 +29,7 @@ class GeminiLangChainWrapper
         },
       },
     })
+
 
     # Extract text from response
     content = extract_content_from_response(response)
@@ -69,6 +76,7 @@ class MultiAgentService
   end
 
   def call
+
     Rails.logger.info "MultiAgentService: Starting collaboration for task #{@task.id}"
     @task.update!(status: :processing, started_at: Time.current)
 
@@ -135,6 +143,7 @@ class MultiAgentService
   end
 
   def create_direct_gemini_client
+
     require "gemini-ai"
 
     client = Gemini.new(
@@ -301,7 +310,6 @@ class MultiAgentService
       @task.update!(
         status: :completed,
         completed_at: Time.current,
-        processing_time: (Time.current - @task.started_at).to_i,
       )
 
       Rails.logger.info "✅ Results saved successfully"

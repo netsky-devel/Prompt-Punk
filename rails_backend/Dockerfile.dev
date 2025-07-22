@@ -1,0 +1,41 @@
+# Development Dockerfile for Rails backend
+FROM ruby:3.4.1-slim
+
+# Install system dependencies
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y \
+    build-essential \
+    curl \
+    git \
+    libjemalloc2 \
+    libpq-dev \
+    libvips \
+    pkg-config \
+    postgresql-client \
+    sqlite3 \
+    libyaml-dev && \
+    rm -rf /var/lib/apt/lists /var/cache/apt/archives
+
+# Set working directory
+WORKDIR /rails
+
+# Set development environment
+ENV RAILS_ENV=development \
+    BUNDLE_PATH="/usr/local/bundle"
+
+# Install gems
+COPY Gemfile Gemfile.lock ./
+RUN bundle install
+
+# Copy application code
+COPY . .
+
+# Create entrypoint script
+COPY bin/docker-entrypoint /usr/bin/
+RUN chmod +x /usr/bin/docker-entrypoint
+
+# Expose port
+EXPOSE 3000
+
+# Set entrypoint
+ENTRYPOINT ["docker-entrypoint"]

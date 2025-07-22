@@ -98,13 +98,32 @@ module Langchain
           max_tokens: 1000,
         )
 
-        # Extract content from LangChain response
-        content = response.chat_completion.dig("choices", 0, "message", "content") ||
-                  response.completion ||
-                  response.to_s
+        # Extract content from LangChain response (handle different API formats)
+        content = nil
+        
+        # Try different response formats
+        if response.respond_to?(:chat_completion) && response.chat_completion
+          # OpenAI/Anthropic format
+          content = response.chat_completion.dig("choices", 0, "message", "content")
+        elsif response.respond_to?(:completion) && response.completion
+          # Direct completion format (Gemini)
+          content = response.completion
+        else
+          # Fallback to string conversion
+          content = response.to_s
+        end
+        
+        # Ensure we have content
+        content = content.to_s.strip
+        if content.empty?
+          raise "Empty response from AI provider"
+        end
 
+        # Clean markdown formatting from Gemini responses
+        cleaned_content = clean_markdown_json(content)
+        
         # Parse the response (it might be JSON string or already parsed)
-        result = content.is_a?(String) ? JSON.parse(content) : content
+        result = cleaned_content.is_a?(String) ? JSON.parse(cleaned_content) : cleaned_content
 
         Rails.logger.info "LeadAgent: Generated strategic decision"
         result
@@ -128,6 +147,25 @@ module Langchain
           "reasoning" => "Error occurred during decision making: #{e.message}",
           "confidence" => 0,
         }
+      end
+
+      private
+
+      def clean_markdown_json(content)
+        return content unless content.is_a?(String)
+        
+        # Remove markdown code block formatting
+        cleaned = content.strip
+        
+        # Remove ```json and ``` markers
+        cleaned = cleaned.gsub(/^```json\s*\n?/, '')
+        cleaned = cleaned.gsub(/\n?```\s*$/, '')
+        
+        # Remove any leading/trailing whitespace
+        cleaned = cleaned.strip
+        
+        Rails.logger.debug "LeadAgent cleaned content: #{cleaned[0..200]}..."
+        cleaned
       end
     end
   end

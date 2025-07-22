@@ -15,7 +15,7 @@
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center rounded-xl font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none transform hover:scale-105 active:scale-95;
+    @apply inline-flex items-center justify-center rounded-xl font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
   }
   
   .btn-primary {
@@ -55,7 +55,7 @@
   }
   
   .card {
-    @apply rounded-2xl border border-white/20 bg-white/70 backdrop-blur-md shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02];
+    @apply rounded-2xl border border-white/20 bg-white/70 backdrop-blur-md shadow-xl hover:shadow-2xl transition-all duration-300;
   }
   
   .card-header {
@@ -79,7 +79,7 @@
   }
   
   .task-card {
-    @apply rounded-xl bg-white/60 backdrop-blur-sm border border-white/30 shadow-lg hover:shadow-xl transition-all duration-300 hover:bg-white/80 p-4;
+    @apply rounded-xl bg-white/60 backdrop-blur-sm border border-white/30 shadow-lg hover:shadow-xl transition-all duration-200 hover:bg-white/75 hover:border-white/40 p-4;
   }
   
   .quality-badge {
