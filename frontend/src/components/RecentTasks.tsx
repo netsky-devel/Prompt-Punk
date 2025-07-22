@@ -2,13 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../stores/AppContext';
 import { apiClient } from '../api/client';
 import type { RecentTask, TaskResult } from '../types/api';
+import { TaskResultAccordion } from './TaskResultAccordion';
 
 export const RecentTasks: React.FC = () => {
   const { state } = useAppContext();
   const [recentTasks, setRecentTasks] = useState<RecentTask[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedTaskResult, setSelectedTaskResult] = useState<TaskResult | null>(null);
+  const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
+  const [taskResults, setTaskResults] = useState<Map<number, TaskResult>>(new Map());
   const [isLoadingResult, setIsLoadingResult] = useState<number | null>(null);
 
   const loadRecentTasks = async () => {
@@ -30,23 +32,35 @@ export const RecentTasks: React.FC = () => {
     }
   };
 
-  const loadTaskResult = async (taskId: number) => {
-    if (!state.providerSettings?.api_key) return;
-
-    try {
-      setIsLoadingResult(taskId);
-      setError(null);
+  const toggleTaskExpansion = async (taskId: number) => {
+    const newExpanded = new Set(expandedTasks);
+    
+    if (newExpanded.has(taskId)) {
+      // Collapse task
+      newExpanded.delete(taskId);
+    } else {
+      // Expand task and load result if not already loaded
+      newExpanded.add(taskId);
       
-      const response = await apiClient.getTaskResult(taskId, state.providerSettings.api_key);
-      if (response.success && response.data) {
-        setSelectedTaskResult(response.data);
+      if (!taskResults.has(taskId) && state.providerSettings?.api_key) {
+        try {
+          setIsLoadingResult(taskId);
+          setError(null);
+          
+          const response = await apiClient.getTaskResult(taskId, state.providerSettings.api_key);
+          if (response.success && response.data) {
+            setTaskResults(prev => new Map(prev).set(taskId, response.data));
+          }
+        } catch (error) {
+          console.error('Error loading task result:', error);
+          setError('Failed to load task result');
+        } finally {
+          setIsLoadingResult(null);
+        }
       }
-    } catch (error) {
-      console.error('Error loading task result:', error);
-      setError('Failed to load task result');
-    } finally {
-      setIsLoadingResult(null);
     }
+    
+    setExpandedTasks(newExpanded);
   };
 
   useEffect(() => {
@@ -96,7 +110,7 @@ export const RecentTasks: React.FC = () => {
           <button
             onClick={loadRecentTasks}
             disabled={isLoading}
-            className="btn btn-secondary text-sm"
+            className="btn btn-secondary btn-sm"
           >
             {isLoading ? '🔄' : '🔄'} Refresh
           </button>
@@ -168,15 +182,17 @@ export const RecentTasks: React.FC = () => {
                     
                     {task.has_result && (
                       <button
-                        onClick={() => loadTaskResult(task.task_id)}
+                        onClick={() => toggleTaskExpansion(task.task_id)}
                         disabled={isLoadingResult === task.task_id}
-                        className="btn btn-primary text-xs"
+                        className="btn btn-primary btn-xs"
                       >
                         {isLoadingResult === task.task_id ? (
                           <>
                             <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
                             Loading...
                           </>
+                        ) : expandedTasks.has(task.task_id) ? (
+                          'Hide Result'
                         ) : (
                           'View Result'
                         )}
@@ -184,128 +200,19 @@ export const RecentTasks: React.FC = () => {
                     )}
                   </div>
                 </div>
+                
+                {/* Accordion Results Display */}
+                {expandedTasks.has(task.task_id) && taskResults.has(task.task_id) && (
+                  <div className="mt-4 border-t border-gray-200 pt-4">
+                    <TaskResultAccordion taskResult={taskResults.get(task.task_id)!} />
+                  </div>
+                )}
               </div>
             ))}
           </div>
         )}
 
-        {/* Task Result Modal */}
-        {selectedTaskResult && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-                <h2 className="text-xl font-semibold text-gray-800">
-                  Task #{selectedTaskResult.task.task_id} - Result
-                </h2>
-                <button
-                  onClick={() => setSelectedTaskResult(null)}
-                  className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
-                >
-                  ×
-                </button>
-              </div>
-              
-              <div className="p-6 space-y-6">
-                {/* Task Info */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-800 mb-2">Task Information</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">Type:</span> {selectedTaskResult.task.improvement_type}
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Architecture:</span> {selectedTaskResult.task.architecture}
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Provider:</span> {selectedTaskResult.task.provider}
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Quality Score:</span> 
-                      <span className="ml-1 font-medium">
-                        {selectedTaskResult.improvement.quality_score}/10 {selectedTaskResult.improvement.quality_emoji}
-                      </span>
-                    </div>
-                  </div>
-                </div>
 
-                {/* Original Prompt */}
-                <div>
-                  <h3 className="font-semibold text-gray-800 mb-2">📝 Original Prompt</h3>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-gray-700 whitespace-pre-wrap">{selectedTaskResult.task.original_prompt}</p>
-                  </div>
-                </div>
-
-                {/* Improved Prompt */}
-                <div>
-                  <h3 className="font-semibold text-gray-800 mb-2">✨ Improved Prompt</h3>
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <p className="text-gray-800 whitespace-pre-wrap">{selectedTaskResult.improvement.improved_prompt}</p>
-                  </div>
-                </div>
-
-                {/* Analysis */}
-                {selectedTaskResult.improvement.analysis && (
-                  <div>
-                    <h3 className="font-semibold text-gray-800 mb-2">🔍 Analysis</h3>
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-                      <div>
-                        <span className="font-medium text-gray-700">Main Goal:</span>
-                        <p className="text-gray-600 mt-1">{selectedTaskResult.improvement.analysis.main_goal}</p>
-                      </div>
-                      {selectedTaskResult.improvement.analysis.identified_problems && selectedTaskResult.improvement.analysis.identified_problems.length > 0 && (
-                        <div>
-                          <span className="font-medium text-gray-700">Identified Problems:</span>
-                          <ul className="list-disc list-inside text-gray-600 mt-1 space-y-1">
-                            {selectedTaskResult.improvement.analysis.identified_problems.map((problem, index) => (
-                              <li key={index}>{problem}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      <div>
-                        <span className="font-medium text-gray-700">Improvement Potential:</span>
-                        <p className="text-gray-600 mt-1">{selectedTaskResult.improvement.analysis.improvement_potential}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Applied Techniques */}
-                {selectedTaskResult.improvement.improvements_metadata?.applied_techniques && (
-                  <div>
-                    <h3 className="font-semibold text-gray-800 mb-2">🛠️ Applied Techniques</h3>
-                    <div className="space-y-2">
-                      {selectedTaskResult.improvement.improvements_metadata.applied_techniques.map((technique, index) => (
-                        <div key={index} className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                          <div className="font-medium text-purple-800">{technique.name}</div>
-                          <p className="text-purple-600 text-sm mt-1">{technique.description}</p>
-                          <p className="text-purple-500 text-xs mt-1">Expected: {technique.expected_effect}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Copy Buttons */}
-                <div className="flex justify-center space-x-4 pt-4 border-t border-gray-200">
-                  <button
-                    onClick={() => navigator.clipboard.writeText(selectedTaskResult.improvement.improved_prompt)}
-                    className="btn btn-primary"
-                  >
-                    📋 Copy Improved Prompt
-                  </button>
-                  <button
-                    onClick={() => setSelectedTaskResult(null)}
-                    className="btn btn-secondary"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -31,7 +31,7 @@ export const ARCHITECTURE_LABELS = {
 
 // Task Configuration
 export const TASK_TYPES = {
-  SINGLE_AGENT: 'single_agent',
+
   MULTI_AGENT: 'multi_agent',
 } as const;
 

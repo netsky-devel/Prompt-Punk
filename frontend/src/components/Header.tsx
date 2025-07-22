@@ -14,7 +14,7 @@ export const Header: React.FC = () => {
                 Prompt Punk
               </h1>
               <p className="text-sm text-gray-600">
-                AI Prompt Enhancement & Optimization
+                The Rebellious AI Prompt Enhancement Platform
               </p>
             </div>
           </div>

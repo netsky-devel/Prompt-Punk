@@ -1,7 +1,7 @@
 {
-  "name": "meta-prompt-frontend",
+  "name": "prompt-punk-frontend",
   "version": "1.0.0",
-  "description": "Frontend for Meta-Prompt AI Enhancement System",
+  "description": "Frontend for Prompt Punk - The Rebellious AI Prompt Enhancement Platform",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

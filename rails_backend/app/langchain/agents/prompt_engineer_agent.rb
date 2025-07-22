@@ -235,6 +235,12 @@ module Langchain
           Your response must be JSON:
           {
             "improved_prompt": "The revolutionarily enhanced prompt with clear improvements",
+            "analysis": {
+              "main_goal": "Clear identification of the original prompt's primary objective",
+              "identified_problems": ["List of specific issues found in the original prompt"],
+              "improvement_potential": "Assessment of how much the prompt can be enhanced",
+              "missing_elements": ["Key components that were absent from the original"]
+            },
             "reasoning": "Detailed explanation of what you improved and why, including specific techniques applied",
             "techniques": ["List of advanced techniques applied with precision"],
             "expected_impact": "Specific measurable improvements expected (e.g., 50% better clarity, 200% more actionable)",

@@ -23,10 +23,11 @@ services:
       dockerfile: Dockerfile.dev
     ports:
       - "3000:3000"
+    env_file:
+      - .env.docker
     environment:
       - RAILS_ENV=development
       - REDIS_URL=redis://redis:6379/0
-      - GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE
     volumes:
       - ./rails_backend:/rails
       - rails_bundle:/usr/local/bundle
@@ -46,10 +47,11 @@ services:
     build:
       context: ./rails_backend
       dockerfile: Dockerfile.dev
+    env_file:
+      - .env.docker
     environment:
       - RAILS_ENV=development
       - REDIS_URL=redis://redis:6379/0
-      - GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE
     volumes:
       - ./rails_backend:/rails
       - rails_bundle:/usr/local/bundle
@@ -61,6 +63,7 @@ services:
 
   # React Frontend
   frontend:
+    container_name: prompt-punk-frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev

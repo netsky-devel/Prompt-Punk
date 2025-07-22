@@ -12,7 +12,7 @@ export const TaskInterface: React.FC = () => {
 
   // Form state
   const [prompt, setPrompt] = useState('');
-  const [improvementType, setImprovementType] = useState<TaskType>('single_agent');
+  const improvementType: TaskType = 'multi_agent';
   const [architecture, setArchitecture] = useState<PromptArchitecture>('auto');
   const [maxRounds, setMaxRounds] = useState(5);
   const [context, setContext] = useState('');
@@ -227,19 +227,7 @@ export const TaskInterface: React.FC = () => {
             {/* Task Configuration */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Improvement Type */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  🎯 Improvement Type
-                </label>
-                <select
-                  value={improvementType}
-                  onChange={(e) => setImprovementType(e.target.value as TaskType)}
-                  className="input"
-                >
-                  <option value="single_agent">🤖 Single Agent (Fast)</option>
-                  <option value="multi_agent">👥 Multi Agent (Thorough)</option>
-                </select>
-              </div>
+
 
               {/* Architecture */}
               <div>
