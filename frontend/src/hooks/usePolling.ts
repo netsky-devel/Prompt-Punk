@@ -30,14 +30,14 @@ export const usePolling = () => {
 
       const response = await apiClient.getTaskStatus(taskId, state.providerSettings.api_key);
       
-      if (response.success && response.data) {
+      if (response.success && response.data && response.data.task) {
         const { task } = response.data;
         
         // Update task state
         dispatch({ type: 'SET_CURRENT_TASK', payload: task });
 
         // If task is completed, get the result
-        if (task.status === 'completed') {
+        if (task && task.status === 'completed') {
           try {
             const resultResponse = await apiClient.getTaskResult(taskId, state.providerSettings.api_key);
             if (resultResponse.success && resultResponse.data) {
@@ -49,11 +49,13 @@ export const usePolling = () => {
           
           // Stop polling
           stopPolling();
-        } else if (task.status === 'failed') {
+        } else if (task && task.status === 'failed') {
           // Stop polling on failure
           stopPolling();
           setError('polling', 'Task failed to complete');
         }
+      } else {
+        console.warn('Invalid task status response:', response);
       }
     } catch (error) {
       console.error('Error polling task status:', error);

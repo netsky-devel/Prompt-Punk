@@ -48,8 +48,13 @@ export const TaskInterface: React.FC = () => {
 
   const canSubmit = areSettingsComplete && isProviderValid && prompt.trim().length >= 10;
 
+  // Prevent rapid state switching that causes flickering
+  const shouldShowResult = taskResult && currentTask?.status === 'completed';
+  const shouldShowProgress = currentTask && !shouldShowResult && (currentTask.status === 'pending' || currentTask.status === 'processing');
+  const shouldShowForm = !shouldShowResult && !shouldShowProgress;
+
   // Show task result if completed
-  if (taskResult) {
+  if (shouldShowResult) {
     return (
       <div className="card">
         <div className="card-header gradient-bg">
@@ -135,7 +140,7 @@ export const TaskInterface: React.FC = () => {
   }
 
   // Show task progress if task is running
-  if (currentTask && currentTask.status !== 'completed') {
+  if (shouldShowProgress) {
     return (
       <div className="card">
         <div className="card-header gradient-bg">
@@ -188,157 +193,159 @@ export const TaskInterface: React.FC = () => {
   }
 
   // Show task creation form
-  return (
-    <div className="card">
-      <div className="card-header gradient-bg">
-        <div className="section-header">
-          <span className="emoji">🔥</span>
-          <span className="gradient-text">Prompt Improvement</span>
+  if (shouldShowForm) {
+    return (
+      <div className="card">
+        <div className="card-header gradient-bg">
+          <div className="section-header">
+            <span className="emoji">🔥</span>
+            <span className="gradient-text">Prompt Improvement</span>
+          </div>
         </div>
-        <p className="text-gray-600 text-lg leading-relaxed">
-          Professional prompt improvement with no timeouts and full progress tracking.
-        </p>
-      </div>
-      
-      <div className="card-content">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Prompt Input */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              📝 Original Prompt
-            </label>
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              className="input min-h-[120px] resize-y"
-              placeholder="Enter your prompt here... (minimum 10 characters)"
-              required
-              minLength={10}
-              maxLength={10000}
-            />
-            <div className="text-right text-xs text-gray-500 mt-1">
-              {prompt.length}/10000 characters
-            </div>
-          </div>
-
-          {/* Task Configuration */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Improvement Type */}
+        
+        <div className="card-content">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Prompt Input */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                🎯 Improvement Type
-              </label>
-              <select
-                value={improvementType}
-                onChange={(e) => setImprovementType(e.target.value as TaskType)}
-                className="input"
-              >
-                <option value="single_agent">🤖 Single Agent (Fast)</option>
-                <option value="multi_agent">👥 Multi Agent (Thorough)</option>
-              </select>
-            </div>
-
-            {/* Architecture */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                🏗️ Architecture
-              </label>
-              <select
-                value={architecture}
-                onChange={(e) => setArchitecture(e.target.value as PromptArchitecture)}
-                className="input"
-              >
-                {Object.entries(ARCHITECTURE_LABELS).map(([key, label]) => (
-                  <option key={key} value={key}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Multi-Agent Options */}
-          {improvementType === 'multi_agent' && (
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                🔄 Max Rounds
-              </label>
-              <input
-                type="number"
-                value={maxRounds}
-                onChange={(e) => setMaxRounds(Number(e.target.value))}
-                className="input"
-                min={1}
-                max={20}
-              />
-            </div>
-          )}
-
-          {/* Optional Fields */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                📋 Context (Optional)
+                📝 Original Prompt
               </label>
               <textarea
-                value={context}
-                onChange={(e) => setContext(e.target.value)}
-                className="input resize-y"
-                placeholder="Provide context for your prompt..."
-                maxLength={1000}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                className="input min-h-[120px] resize-y"
+                placeholder="Enter your prompt here... (minimum 10 characters)"
+                required
+                minLength={10}
+                maxLength={10000}
               />
+              <div className="text-right text-xs text-gray-500 mt-1">
+                {prompt.length}/10000 characters
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                👥 Target Audience (Optional)
-              </label>
-              <input
-                type="text"
-                value={targetAudience}
-                onChange={(e) => setTargetAudience(e.target.value)}
-                className="input"
-                placeholder="Who is the intended audience?"
-                maxLength={500}
-              />
-            </div>
-          </div>
+            {/* Task Configuration */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Improvement Type */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  🎯 Improvement Type
+                </label>
+                <select
+                  value={improvementType}
+                  onChange={(e) => setImprovementType(e.target.value as TaskType)}
+                  className="input"
+                >
+                  <option value="single_agent">🤖 Single Agent (Fast)</option>
+                  <option value="multi_agent">👥 Multi Agent (Thorough)</option>
+                </select>
+              </div>
 
-          {/* Error Display */}
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-700 text-sm">⚠️ {error}</p>
+              {/* Architecture */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  🏗️ Architecture
+                </label>
+                <select
+                  value={architecture}
+                  onChange={(e) => setArchitecture(e.target.value as PromptArchitecture)}
+                  className="input"
+                >
+                  {Object.entries(ARCHITECTURE_LABELS).map(([key, label]) => (
+                    <option key={key} value={key}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-          )}
 
-          {/* Submit Button */}
-          <div className="flex justify-center">
-            <button
-              type="submit"
-              disabled={!canSubmit || isLoading}
-              className={`btn ${canSubmit ? 'btn-primary' : 'btn-disabled'} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {isLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Creating Task...
-                </>
-              ) : (
-                '🚀 Improve Prompt'
-              )}
-            </button>
-          </div>
+            {/* Multi-Agent Options */}
+            {improvementType === 'multi_agent' && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  🔄 Max Rounds
+                </label>
+                <input
+                  type="number"
+                  value={maxRounds}
+                  onChange={(e) => setMaxRounds(Number(e.target.value))}
+                  className="input"
+                  min={1}
+                  max={20}
+                />
+              </div>
+            )}
 
-          {/* Requirements Note */}
-          {!areSettingsComplete && (
-            <div className="text-center p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-yellow-800 text-sm">
-                ⚠️ Please configure your provider settings above before creating tasks.
-              </p>
+            {/* Optional Fields */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  📋 Context (Optional)
+                </label>
+                <textarea
+                  value={context}
+                  onChange={(e) => setContext(e.target.value)}
+                  className="input resize-y"
+                  placeholder="Provide context for your prompt..."
+                  maxLength={1000}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  👥 Target Audience (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={targetAudience}
+                  onChange={(e) => setTargetAudience(e.target.value)}
+                  className="input"
+                  placeholder="Who is the intended audience?"
+                  maxLength={500}
+                />
+              </div>
             </div>
-          )}
-        </form>
+
+            {/* Error Display */}
+            {error && (
+              <div className="mt-6 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-700 text-sm">⚠️ {error}</p>
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <div className="mt-8 flex justify-center">
+              <button
+                type="submit"
+                disabled={!canSubmit || isLoading}
+                className={`btn px-8 py-3 text-lg font-semibold ${canSubmit ? 'btn-primary' : 'btn-disabled'} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                    Creating Task...
+                  </>
+                ) : (
+                  '🚀 Improve Prompt'
+                )}
+              </button>
+            </div>
+
+            {/* Requirements Note */}
+            {!areSettingsComplete && (
+              <div className="mt-6 text-center p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-yellow-800 text-sm">
+                  ⚠️ Please configure your provider settings above before creating tasks.
+                </p>
+              </div>
+            )}
+          </form>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  // Fallback if no specific state is met (should ideally not be reached)
+  return null;
 }; 

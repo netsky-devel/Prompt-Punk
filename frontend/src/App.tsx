@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { Header } from './components/Header'
 import { ProviderSettingsForm } from './components/ProviderSettingsForm'
 import { TaskInterface } from './components/TaskInterface'
+import { RecentTasks } from './components/RecentTasks'
 import { useAppContext } from './stores/AppContext'
 
 function App() {
@@ -40,6 +41,15 @@ function App() {
             transition={{ duration: 0.5, delay: 0.1 }}
           >
             <TaskInterface />
+          </motion.div>
+
+          {/* Recent Tasks */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <RecentTasks />
           </motion.div>
         </div>
       </main>
