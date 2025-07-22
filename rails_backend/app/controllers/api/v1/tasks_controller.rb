@@ -1,4 +1,5 @@
 class Api::V1::TasksController < Api::BaseController
+  before_action :validate_api_key
   before_action :set_task, only: [:show, :status, :result]
 
   # POST /api/v1/tasks
@@ -99,11 +100,31 @@ class Api::V1::TasksController < Api::BaseController
 
   # GET /api/v1/tasks/recent
   def recent
-    @tasks = PromptTask.includes(:prompt_improvement)
-      .recent
-      .limit(10)
+    tasks = PromptTask.recent.limit(10).map do |task|
+      {
+        task_id: task.id,
+        status: task.status,
+        improvement_type: task.improvement_type,
+        provider: task.provider,
+        created_at: task.created_at.iso8601,
+        processing_time: task.processing_time,
+        quality_score: task.prompt_improvement&.quality_score,
+        quality_emoji: task.prompt_improvement&.quality_emoji,
+        has_result: task.completed? && task.prompt_improvement.present?,
+      }
+    end
 
-    render_success(@tasks.map { |task| recent_task_data(task) })
+    render_success(tasks)
+  end
+
+  # GET /api/v1/tasks/test_api_key
+  def test_api_key
+    # If we got here, the API key passed validation in before_action
+    render_success({
+      message: "API key is valid",
+      key_format: current_api_key[0..10] + "...",
+      timestamp: Time.current.iso8601,
+    })
   end
 
   private

@@ -125,12 +125,13 @@ export class ApiClient {
     return this.request('/health');
   }
 
-  // Test API Key (create a simple task and delete it)
+  // Test API Key (use dedicated endpoint)
   async testApiKey(apiKey: string): Promise<boolean> {
     try {
-      // Try to get recent tasks as a simple API key test
-      await this.getRecentTasks(apiKey);
-      return true;
+      const response = await this.request<ApiResponse<any>>('/tasks/test_api_key', {
+        headers: this.addApiKey(apiKey),
+      });
+      return response.success;
     } catch (error) {
       return false;
     }

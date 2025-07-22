@@ -9,6 +9,7 @@ Rails.application.routes.draw do
         end
         collection do
           get :recent
+          get :test_api_key
         end
       end
 
