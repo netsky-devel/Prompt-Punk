@@ -125,28 +125,24 @@ module Langchain
         # Parse the response (it might be JSON string or already parsed)
         result = cleaned_content.is_a?(String) ? JSON.parse(cleaned_content) : cleaned_content
 
-        Rails.logger.info "LeadAgent: Generated strategic decision"
+        # Validate required fields
+        unless result.is_a?(Hash) && result["decision"] && result["reasoning"]
+          Rails.logger.error "LeadAgent: Invalid JSON structure - missing required fields"
+          Rails.logger.error "Parsed JSON: #{result.inspect}"
+          raise "Invalid response structure from LeadAgent: missing decision or reasoning"
+        end
+
+        Rails.logger.info "LeadAgent: Generated strategic decision: #{result['decision']}"
         result
       rescue JSON::ParserError => e
-        Rails.logger.error "LeadAgent: JSON parsing error - #{e.message}"
-        Rails.logger.error "Raw response: #{content}"
-
-        # Return a fallback response
-        {
-          "decision" => "continue",
-          "reasoning" => "Unable to make decision due to parsing error: #{e.message}",
-          "confidence" => 0,
-        }
+        Rails.logger.error "LeadAgent: JSON parsing failed: #{e.message}"
+        Rails.logger.error "Raw response: #{content[0..500]}"
+        Rails.logger.error "Cleaned content: #{cleaned_content[0..500]}"
+        raise "Failed to parse JSON response from LeadAgent: #{e.message}"
       rescue => e
         Rails.logger.error "LeadAgent: Error - #{e.message}"
         Rails.logger.error e.backtrace.join("\n")
-
-        # Return a fallback response
-        {
-          "decision" => "continue",
-          "reasoning" => "Error occurred during decision making: #{e.message}",
-          "confidence" => 0,
-        }
+        raise "LeadAgent failed: #{e.message}"
       end
 
       private

@@ -68,7 +68,9 @@ module Langchain
         - Fresh perspective and new approach needed
         - Complete rework recommended
 
-        Your response must be JSON:
+        **CRITICAL: Your response MUST be valid JSON only. No markdown, no explanations, no text outside JSON.**
+        
+        REQUIRED JSON FORMAT (copy this structure exactly):
         {
           "quality_assessment": {
             "overall_score": 85,
@@ -83,12 +85,19 @@ module Langchain
             "improvement_areas": ["Area 1", "Area 2"],
             "missing_elements": ["Element 1", "Element 2"]
           },
-          "recommendation": "APPROVE | CONTINUE | RESTART",
+          "recommendation": "CONTINUE",
           "confidence_level": 92,
           "feedback": "Detailed professional feedback on the prompt quality and specific recommendations",
           "expected_impact": "Quantified prediction of improvement impact (e.g., 40% better response quality)",
           "suggestions": ["Specific actionable suggestion 1", "Specific actionable suggestion 2"]
         }
+        
+        **MANDATORY RULES:**
+        - Return ONLY valid JSON, nothing else
+        - All scores must be integers 0-100
+        - recommendation must be exactly: "APPROVE", "CONTINUE", or "RESTART"
+        - feedback must be a detailed string
+        - All arrays must contain at least 1 item
 
         **PROVIDE EXPERT-LEVEL QUALITY ANALYSIS WITH ACTIONABLE INSIGHTS!**
       PROMPT
@@ -137,28 +146,42 @@ module Langchain
         # Parse the response (it might be JSON string or already parsed)
         result = cleaned_content.is_a?(String) ? JSON.parse(cleaned_content) : cleaned_content
 
-        Rails.logger.info "ReviewerAgent: Generated review"
+        # Extract data from complex JSON structure
+        feedback = result["feedback"]
+        quality_score = result.dig("quality_assessment", "overall_score") || result["quality_score"]
+        recommendation = result["recommendation"]
+        confidence = result["confidence_level"]
+        
+        # Validate required fields
+        unless result.is_a?(Hash) && feedback && quality_score
+          Rails.logger.error "ReviewerAgent: Invalid JSON structure - missing required fields"
+          Rails.logger.error "Expected: feedback and quality_assessment.overall_score (or quality_score)"
+          Rails.logger.error "Parsed JSON: #{result.inspect}"
+          raise "Invalid response structure from ReviewerAgent: missing feedback or quality_score"
+        end
+        
+        # Transform to consistent format
+        result = {
+          "feedback" => feedback,
+          "quality_score" => quality_score,
+          "recommendation" => recommendation || "continue",
+          "confidence" => confidence || 80,
+          "detailed_analysis" => result["detailed_analysis"],
+          "quality_assessment" => result["quality_assessment"],
+          "suggestions" => result["suggestions"]
+        }
+
+        Rails.logger.info "ReviewerAgent: Generated review with score #{result['quality_score']}"
         result
       rescue JSON::ParserError => e
-        Rails.logger.error "ReviewerAgent: JSON parsing error - #{e.message}"
-        Rails.logger.error "Raw response: #{content}"
-
-        # Return a fallback response
-        {
-          "feedback" => "Unable to provide feedback due to parsing error: #{e.message}",
-          "quality_score" => 0,
-          "recommendation" => "retry",
-        }
+        Rails.logger.error "ReviewerAgent: JSON parsing failed: #{e.message}"
+        Rails.logger.error "Raw response: #{content[0..500]}"
+        Rails.logger.error "Cleaned content: #{cleaned_content[0..500]}"
+        raise "Failed to parse JSON response from ReviewerAgent: #{e.message}"
       rescue => e
         Rails.logger.error "ReviewerAgent: Error - #{e.message}"
         Rails.logger.error e.backtrace.join("\n")
-
-        # Return a fallback response
-        {
-          "feedback" => "Error occurred during review: #{e.message}",
-          "quality_score" => 0,
-          "recommendation" => "retry",
-        }
+        raise "ReviewerAgent failed: #{e.message}"
       end
 
       private

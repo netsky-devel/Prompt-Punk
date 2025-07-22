@@ -1,8 +1,9 @@
 module Langchain
   module Agents
     class PromptEngineerAgent
-      def initialize(llm)
+      def initialize(llm, provider_config = nil)
         @llm = llm
+        @provider_config = provider_config || {}
       end
 
       def call(prompt)
@@ -30,18 +31,41 @@ module Langchain
         )
 
         # Extract content from LangChain response (handle different API formats)
+        Rails.logger.info " PromptEngineerAgent: Processing LangChain response"
+        Rails.logger.info "Response class: #{response.class}"
+        Rails.logger.info "Response methods: #{response.methods.grep(/completion|content|text/).inspect}"
+        Rails.logger.info "Response inspect: #{response.inspect[0..500]}"
+        
         content = nil
         
-        # Try different response formats
-        if response.respond_to?(:chat_completion) && response.chat_completion
-          # OpenAI/Anthropic format
-          content = response.chat_completion.dig("choices", 0, "message", "content")
-        elsif response.respond_to?(:completion) && response.completion
-          # Direct completion format (Gemini)
-          content = response.completion
-        else
-          # Fallback to string conversion
-          content = response.to_s
+        # Try different response formats with nil checks
+        if response.respond_to?(:chat_completion)
+          chat_completion = response.chat_completion
+          Rails.logger.debug "chat_completion: #{chat_completion.inspect[0..200]}"
+          if chat_completion
+            content = chat_completion.dig("choices", 0, "message", "content")
+            Rails.logger.debug "Extracted from chat_completion: #{content&.[](0..100)}"
+          end
+        end
+        
+        if content.nil? && response.respond_to?(:completion)
+          completion = response.completion
+          Rails.logger.debug "completion: #{completion.inspect[0..200]}"
+          if completion
+            content = completion
+            Rails.logger.debug "Extracted from completion: #{content&.[](0..100)}"
+          end
+        end
+        
+        if content.nil?
+          # Try to extract from raw response structure
+          if response.is_a?(Hash)
+            content = response["content"] || response["text"] || response["message"]
+            Rails.logger.debug "Extracted from hash: #{content&.[](0..100)}"
+          elsif response.respond_to?(:to_s)
+            content = response.to_s
+            Rails.logger.debug "Fallback to_s: #{content[0..100]}"
+          end
         end
         
         # Ensure we have content
@@ -56,44 +80,24 @@ module Langchain
         # Parse the response (it might be JSON string or already parsed)
         result = cleaned_content.is_a?(String) ? JSON.parse(cleaned_content) : cleaned_content
 
+        # Validate required fields
+        unless result.is_a?(Hash) && result["improved_prompt"]
+          Rails.logger.error "PromptEngineerAgent: Invalid JSON structure - missing improved_prompt"
+          Rails.logger.error "Parsed JSON: #{result.inspect}"
+          raise "Invalid response structure from PromptEngineerAgent: missing improved_prompt"
+        end
+
         Rails.logger.info "PromptEngineerAgent: Generated improvement"
         result
       rescue JSON::ParserError => e
-        Rails.logger.error "PromptEngineerAgent: JSON parsing error - #{e.message}"
-        Rails.logger.error "Raw response: #{content}"
-
-        # Return a fallback response
-        {
-          "improved_prompt" => prompt,
-          "analysis" => {
-            "main_goal" => "Unable to analyze due to parsing error",
-            "identified_problems" => ["JSON parsing failed: #{e.message}"],
-            "improvement_potential" => "Error in processing",
-          },
-          "improvements_metadata" => {
-            "applied_techniques" => [],
-            "expected_results" => [],
-            "quality_score" => 0,
-          },
-        }
+        Rails.logger.error "PromptEngineerAgent: JSON parsing failed: #{e.message}"
+        Rails.logger.error "Raw response: #{content[0..500]}"
+        Rails.logger.error "Cleaned content: #{cleaned_content[0..500]}"
+        raise "Failed to parse JSON response from PromptEngineerAgent: #{e.message}"
       rescue => e
         Rails.logger.error "PromptEngineerAgent: Error - #{e.message}"
         Rails.logger.error e.backtrace.join("\n")
-
-        # Return a fallback response
-        {
-          "improved_prompt" => prompt,
-          "analysis" => {
-            "main_goal" => "Error occurred during processing",
-            "identified_problems" => [e.message],
-            "improvement_potential" => "Unable to process due to error",
-          },
-          "improvements_metadata" => {
-            "applied_techniques" => [],
-            "expected_results" => [],
-            "quality_score" => 0,
-          },
-        }
+        raise "PromptEngineerAgent failed: #{e.message}"
       end
 
       private
@@ -329,10 +333,14 @@ module Langchain
       def parse_improvement_response(response)
         response_text = extract_response_text(response)
 
-        Rails.logger.info "PromptEngineer response: #{response_text[0..200]}..."
+        Rails.logger.info "PromptEngineer raw response: #{response_text[0..200]}..."
+
+        # Clean markdown formatting before JSON parsing
+        cleaned_content = clean_markdown_json(response_text)
+        Rails.logger.info "PromptEngineer cleaned content: #{cleaned_content[0..200]}..."
 
         begin
-          parsed = JSON.parse(response_text)
+          parsed = JSON.parse(cleaned_content)
 
           if parsed.is_a?(Hash) && parsed["improved_prompt"].present?
             return {
@@ -341,44 +349,85 @@ module Langchain
                      techniques: parsed["techniques"] || [],
                      changes_made: parsed["changes_made"] || [],
                    }
+          else
+            Rails.logger.error "PromptEngineer: Invalid JSON structure - missing improved_prompt"
+            Rails.logger.error "Parsed JSON: #{parsed.inspect}"
+            raise "Invalid response structure from PromptEngineerAgent: missing improved_prompt"
           end
         rescue JSON::ParserError => e
-          Rails.logger.warn "Failed to parse PromptEngineer JSON: #{e.message}"
+          Rails.logger.error "PromptEngineer: JSON parsing failed: #{e.message}"
+          Rails.logger.error "Raw response: #{response_text[0..500]}"
+          Rails.logger.error "Cleaned content: #{cleaned_content[0..500]}"
+          raise "Failed to parse JSON response from PromptEngineerAgent: #{e.message}"
         end
-
-        # Fallback parsing
-        fallback_parse_response(response_text)
       end
 
       def extract_response_text(response)
+        Rails.logger.debug "PromptEngineerAgent: Extracting response text from provider #{@provider_config[:provider]}"
+        Rails.logger.debug "Response structure: #{response.inspect[0..500]}"
+        
         case @provider_config[:provider]
         when "openai"
-          response.dig("choices", 0, "message", "content") || response.to_s
+          content = response.dig("choices", 0, "message", "content")
+          content || response.to_s
         when "anthropic"
-          response.dig("content", 0, "text") || response.to_s
+          content = response.dig("content", 0, "text")
+          content || response.to_s
         when "google"
-          response.dig("candidates", 0, "content", "parts", 0, "text") || response.to_s
+          # Handle Gemini API response structure more carefully
+          if response.nil?
+            Rails.logger.error "PromptEngineerAgent: Response is nil"
+            raise "Gemini API returned nil response"
+          end
+          
+          candidates = response["candidates"]
+          if candidates.nil? || candidates.empty?
+            Rails.logger.error "PromptEngineerAgent: No candidates in Gemini response"
+            Rails.logger.error "Response keys: #{response.keys.inspect}"
+            raise "Gemini API response missing candidates: #{response.inspect[0..300]}"
+          end
+          
+          first_candidate = candidates[0]
+          if first_candidate.nil?
+            Rails.logger.error "PromptEngineerAgent: First candidate is nil"
+            raise "Gemini API first candidate is nil"
+          end
+          
+          content_obj = first_candidate["content"]
+          if content_obj.nil?
+            Rails.logger.error "PromptEngineerAgent: Content object is nil"
+            Rails.logger.error "First candidate keys: #{first_candidate.keys.inspect}"
+            raise "Gemini API candidate missing content: #{first_candidate.inspect[0..200]}"
+          end
+          
+          parts = content_obj["parts"]
+          if parts.nil? || parts.empty?
+            Rails.logger.error "PromptEngineerAgent: Parts array is nil or empty"
+            Rails.logger.error "Content object keys: #{content_obj.keys.inspect}"
+            raise "Gemini API content missing parts: #{content_obj.inspect[0..200]}"
+          end
+          
+          first_part = parts[0]
+          if first_part.nil?
+            Rails.logger.error "PromptEngineerAgent: First part is nil"
+            raise "Gemini API first part is nil"
+          end
+          
+          text = first_part["text"]
+          if text.nil?
+            Rails.logger.error "PromptEngineerAgent: Text is nil"
+            Rails.logger.error "First part keys: #{first_part.keys.inspect}"
+            raise "Gemini API part missing text: #{first_part.inspect[0..200]}"
+          end
+          
+          Rails.logger.debug "PromptEngineerAgent: Successfully extracted text: #{text[0..100]}..."
+          text
         else
           response.is_a?(String) ? response : response.to_s
         end
       end
 
-      def fallback_parse_response(text)
-        # Try to extract improved prompt from various formats
-        improved_prompt = text
 
-        if text.include?("improved_prompt")
-          match = text.match(/"improved_prompt":\s*"([^"]+)"/m)
-          improved_prompt = match[1] if match
-        end
-
-        {
-          improved_prompt: improved_prompt,
-          reasoning: "Prompt enhancement attempted",
-          techniques: ["General Improvement"],
-          changes_made: ["Enhanced based on AI analysis"],
-        }
-      end
     end
   end
 end

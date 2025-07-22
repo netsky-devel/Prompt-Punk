@@ -21,10 +21,15 @@ class MultiAgentJob < ApplicationJob
     Rails.logger.error "MultiAgentJob: Error processing task #{task_id} - #{e.message}"
     Rails.logger.error e.backtrace.join("\n")
 
-    # Update task status to failed
+    # Update task status to failed with error message
     begin
       task = PromptTask.find(task_id)
-      task.update!(status: :failed)
+      task.update!(
+        status: :failed,
+        error_message: "#{e.class}: #{e.message}",
+        completed_at: Time.current
+      )
+      Rails.logger.info "Task #{task_id} marked as failed with error: #{e.message}"
     rescue => update_error
       Rails.logger.error "Failed to update task status: #{update_error.message}"
     end

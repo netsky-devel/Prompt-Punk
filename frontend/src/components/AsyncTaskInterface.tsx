@@ -100,7 +100,7 @@ export const AsyncTaskInterface: React.FC<AsyncTaskInterfaceProps> = ({
 
   const loadRecentTasks = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/tasks/recent?limit=10');
+      const response = await fetch('/api/v1/tasks/recent?limit=10');
       const data = await response.json();
       setRecentTasks(data.tasks || []);
     } catch (error) {
@@ -142,12 +142,13 @@ export const AsyncTaskInterface: React.FC<AsyncTaskInterfaceProps> = ({
 
       console.log('Creating task with data:', requestData);
 
-      const response = await fetch('http://localhost:8000/api/v1/tasks/improve-prompt', {
+      const response = await fetch('/api/v1/tasks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-API-Key': apiKey,
         },
-        body: JSON.stringify(requestData)
+        body: JSON.stringify({ task: requestData })
       });
 
       console.log('Response received:', response.status, response.statusText);
@@ -175,7 +176,11 @@ export const AsyncTaskInterface: React.FC<AsyncTaskInterfaceProps> = ({
     
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(`http://localhost:8000/api/v1/tasks/${taskId}/status`);
+        const response = await fetch(`/api/v1/tasks/${taskId}/status`, {
+          headers: {
+            'X-API-Key': apiKey,
+          },
+        });
         const status: TaskStatus = await response.json();
         
         setTaskStatus(status);
@@ -202,8 +207,45 @@ export const AsyncTaskInterface: React.FC<AsyncTaskInterfaceProps> = ({
 
   const viewTaskResults = async (taskId: number) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/tasks/${taskId}/status`);
-      const status: TaskStatus = await response.json();
+      const response = await fetch(`/api/v1/tasks/${taskId}/result`, {
+        headers: {
+          'X-API-Key': apiKey,
+        },
+      });
+      const result = await response.json();
+      
+      // Transform backend response to match frontend expectations
+      const status: TaskStatus = {
+        task_id: result.data.task.task_id,
+        status: result.data.task.status,
+        improvement_type: result.data.task.improvement_type,
+        original_prompt: result.data.task.original_prompt,
+        created_at: result.data.task.created_at,
+        started_at: result.data.task.started_at,
+        completed_at: result.data.task.completed_at,
+        error_message: result.data.task.error_message,
+        improvements: result.data.improvement ? [{
+          improved_prompt: result.data.improvement.improved_prompt,
+          analysis: result.data.improvement.analysis,
+          improvements_metadata: result.data.improvement.improvements_metadata,
+          quality_score: result.data.improvement.quality_score,
+          processing_time_seconds: result.data.improvement.processing_time_seconds,
+          provider_used: result.data.improvement.provider_used,
+          model_used: result.data.improvement.ai_model_used,
+          architecture_used: result.data.improvement.architecture_used,
+          created_at: result.data.task.created_at
+        }] : [],
+        multi_agent_progress: result.data.session?.feedback_history ? Object.entries(result.data.session.feedback_history).map(([round, data]: [string, any]) => ({
+          round_number: parseInt(round),
+          agent_name: 'Multi-Agent System',
+          feedback: data,
+          prompt_version: data.improvement?.improved_prompt || '',
+          techniques_applied: data.improvement?.improvements_metadata?.applied_techniques || [],
+          started_at: data.timestamp,
+          completed_at: data.timestamp,
+          processing_time_seconds: result.data.improvement?.processing_time_seconds
+        })) : []
+      };
       setTaskStatus(status);
       setSelectedTaskId(taskId);
       setCurrentTask({ task_id: taskId, status: status.status, message: 'Viewing task results' });

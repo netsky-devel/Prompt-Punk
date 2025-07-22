@@ -167,7 +167,7 @@ class MultiAgentService
   def prompt_engineer_step(current_prompt, round)
     Rails.logger.info "Prompt Engineer: Improving prompt (Round #{round})"
 
-    agent = Langchain::Agents::PromptEngineerAgent.new(@ai_provider)
+    agent = Langchain::Agents::PromptEngineerAgent.new(@ai_provider, @provider_config)
     prompt_content = build_prompt_engineer_content(current_prompt, round)
     result = agent.call(prompt_content)
 
