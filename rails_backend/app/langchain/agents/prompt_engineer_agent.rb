@@ -115,6 +115,13 @@ module Langchain
         # Remove any leading/trailing whitespace
         cleaned = cleaned.strip
         
+        # Remove invalid ASCII control characters that can break JSON parsing
+        # Keep only printable ASCII characters, newlines, tabs, and carriage returns
+        cleaned = cleaned.gsub(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/, '')
+        
+        # Fix common encoding issues
+        cleaned = cleaned.encode('UTF-8', invalid: :replace, undef: :replace, replace: '')
+        
         Rails.logger.debug "Cleaned content: #{cleaned[0..200]}..."
         cleaned
       end

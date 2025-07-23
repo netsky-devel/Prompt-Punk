@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { TaskForm } from './TaskForm';
-import { TaskProgress } from './TaskProgress';
+import { TaskProgress } from './TaskProgressWebSocket';
 import { ErrorDisplay } from './ErrorDisplay';
 import { RecentTasks } from './RecentTasks';
-import { useTaskManager } from '../hooks/useTaskManager';
+import { useTaskManagerWebSocket } from '../hooks/useTaskManagerWebSocket';
 
 interface AsyncTaskInterfaceProps {
   apiKey: string;
@@ -18,13 +18,15 @@ export const AsyncTaskInterface: React.FC<AsyncTaskInterfaceProps> = ({
   
   const {
     currentTask,
-    taskStatus,
     isSubmitting,
     error,
+    isConnected,
+    connectionError,
     submitTask,
     cancelTask,
-    clearError
-  } = useTaskManager({ 
+    clearError,
+    isTaskRunning
+  } = useTaskManagerWebSocket({ 
     apiKey,
     onTaskCompleted: () => {
       // Force RecentTasks to refresh by changing key
@@ -34,10 +36,10 @@ export const AsyncTaskInterface: React.FC<AsyncTaskInterfaceProps> = ({
 
   // Debug logging
   useEffect(() => {
-    if (currentTask && taskStatus) {
-      console.log('AsyncTaskInterface - currentTask:', currentTask, 'taskStatus:', taskStatus);
+    if (currentTask) {
+      console.log('AsyncTaskInterface - currentTask:', currentTask, 'WebSocket connected:', isConnected);
     }
-  }, [currentTask, taskStatus]);
+  }, [currentTask, isConnected]);
 
   const handleTaskSubmitted = async (taskData: {
     original_prompt: string;
@@ -46,12 +48,13 @@ export const AsyncTaskInterface: React.FC<AsyncTaskInterfaceProps> = ({
     max_rounds: number;
   }) => {
     try {
-      await submitTask({
-        ...taskData,
-        model: modelName
+      await submitTask(taskData.original_prompt, {
+        provider: taskData.provider,
+        model: modelName,
+        maxRounds: taskData.max_rounds
       });
     } catch (error) {
-      // Error is already handled by useTaskManager
+      // Error is already handled by useTaskManagerWebSocket
     }
   };
 
@@ -70,12 +73,29 @@ export const AsyncTaskInterface: React.FC<AsyncTaskInterfaceProps> = ({
       />
 
       {/* Task Progress - Only shows for pending/processing tasks */}
-      {currentTask && taskStatus && (
+      {currentTask && isTaskRunning && (
         <TaskProgress
-          taskId={currentTask.task_id}
-          taskStatus={taskStatus}
+          taskId={currentTask.id}
+          task={currentTask}
           onCancel={cancelTask}
         />
+      )}
+      
+      {/* Connection Status */}
+      {connectionError && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+          <div className="flex">
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-yellow-800">
+                WebSocket Connection Issue
+              </h3>
+              <div className="mt-2 text-sm text-yellow-700">
+                <p>{connectionError}</p>
+                <p className="mt-1">Task updates may be delayed. The system will attempt to reconnect automatically.</p>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Recent Tasks */}

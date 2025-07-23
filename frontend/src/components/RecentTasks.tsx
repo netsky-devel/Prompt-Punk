@@ -1,219 +1,185 @@
-import React, { useEffect, useState } from 'react';
-import { useAppContext } from '../stores/AppContext';
-import { apiClient } from '../api/client';
-import type { RecentTask, TaskResult } from '../types/api';
-import { TaskResultAccordion } from './TaskResultAccordion';
+import { useState, useEffect } from 'react';
+import { Clock, Star, AlertCircle, CheckCircle, Loader } from 'lucide-react';
+import { useApi } from '../hooks/useApi';
+import type { RecentTask } from '../types/api';
 
-export const RecentTasks: React.FC = () => {
-  const { state } = useAppContext();
-  const [recentTasks, setRecentTasks] = useState<RecentTask[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+interface RecentTasksProps {
+  onTaskClick?: (taskId: number) => void;
+}
+
+export function RecentTasks({ onTaskClick }: RecentTasksProps) {
+  const [tasks, setTasks] = useState<RecentTask[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
-  const [taskResults, setTaskResults] = useState<Map<number, TaskResult>>(new Map());
-  const [isLoadingResult, setIsLoadingResult] = useState<number | null>(null);
 
-  const loadRecentTasks = async () => {
-    if (!state.providerSettings?.api_key) return;
+  const { getRecentTasks } = useApi();
 
-    try {
+  useEffect(() => {
+    const fetchTasks = async () => {
       setIsLoading(true);
       setError(null);
       
-      const response = await apiClient.getRecentTasks(state.providerSettings.api_key);
-      if (response.success && response.data) {
-        setRecentTasks(response.data);
+      try {
+        const recentTasks = await getRecentTasks();
+        setTasks(recentTasks);
+      } catch (err) {
+        setError('Failed to load recent tasks');
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Error loading recent tasks:', error);
-      setError('Failed to load recent tasks');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
 
-  const toggleTaskExpansion = async (taskId: number) => {
-    const newExpanded = new Set(expandedTasks);
-    
-    if (newExpanded.has(taskId)) {
-      // Collapse task
-      newExpanded.delete(taskId);
-    } else {
-      // Expand task and load result if not already loaded
-      newExpanded.add(taskId);
-      
-      if (!taskResults.has(taskId) && state.providerSettings?.api_key) {
-        try {
-          setIsLoadingResult(taskId);
-          setError(null);
-          
-          const response = await apiClient.getTaskResult(taskId, state.providerSettings.api_key);
-          if (response.success && response.data) {
-            setTaskResults(prev => new Map(prev).set(taskId, response.data));
-          }
-        } catch (error) {
-          console.error('Error loading task result:', error);
-          setError('Failed to load task result');
-        } finally {
-          setIsLoadingResult(null);
-        }
-      }
-    }
-    
-    setExpandedTasks(newExpanded);
-  };
+    fetchTasks();
+  }, [getRecentTasks]);
 
-  useEffect(() => {
-    if (state.providerSettings?.api_key) {
-      loadRecentTasks();
-    }
-  }, [state.providerSettings?.api_key]);
-
-  const getStatusEmoji = (status: string) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed': return '✅';
-      case 'processing': return '⏳';
-      case 'pending': return '🔄';
-      case 'failed': return '❌';
-      default: return '❓';
+      case 'completed':
+        return <CheckCircle className="w-4 h-4 text-green-400" />;
+      case 'failed':
+        return <AlertCircle className="w-4 h-4 text-red-400" />;
+      case 'processing':
+        return <Loader className="w-4 h-4 text-blue-400 animate-spin" />;
+      default:
+        return <Clock className="w-4 h-4 text-yellow-400" />;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'text-green-400';
+      case 'failed':
+        return 'text-red-400';
+      case 'processing':
+        return 'text-blue-400';
+      default:
+        return 'text-yellow-400';
     }
   };
 
   const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleString();
-    } catch {
-      return 'Unknown date';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) {
+      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+      return diffInMinutes < 1 ? 'Just now' : `${diffInMinutes}m ago`;
+    } else if (diffInHours < 24) {
+      return `${diffInHours}h ago`;
+    } else {
+      const diffInDays = Math.floor(diffInHours / 24);
+      return `${diffInDays}d ago`;
     }
   };
 
-  if (!state.providerSettings?.api_key) {
-    return null; // Don't show if no API key
-  }
+  const truncatePrompt = (prompt: string | undefined | null, maxLength: number = 80) => {
+    if (!prompt) return 'No prompt available';
+    if (prompt.length <= maxLength) return prompt;
+    return prompt.substring(0, maxLength) + '...';
+  };
 
   return (
-    <div className="card">
-      <div className="card-header gradient-bg">
-        <div className="section-header">
-          <span className="emoji">📋</span>
-          <span className="gradient-text">Recent Tasks</span>
-        </div>
-        <p className="text-gray-600 text-lg leading-relaxed">
-          Your recent prompt improvement tasks and their results.
-        </p>
+    <div className="bg-dark-900 rounded-xl border border-dark-800 p-6">
+      <div className="flex items-center space-x-2 mb-4">
+        <Clock className="w-5 h-5 text-purple-400" />
+        <h3 className="text-lg font-semibold text-white">Recent Tasks</h3>
       </div>
-      
-      <div className="card-content">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-800">Task History</h3>
-          <button
-            onClick={loadRecentTasks}
-            disabled={isLoading}
-            className="btn btn-secondary btn-sm"
-          >
-            {isLoading ? '🔄' : '🔄'} Refresh
-          </button>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <div className="flex items-center space-x-2">
+            <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-dark-400 text-sm">Loading...</span>
+          </div>
         </div>
+      ) : error ? (
+        <div className="text-center py-8">
+          <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
+          <p className="text-red-400 text-sm">{error}</p>
+        </div>
+      ) : tasks.length === 0 ? (
+        <div className="text-center py-8">
+          <Clock className="w-8 h-8 text-dark-600 mx-auto mb-2" />
+          <p className="text-dark-400 text-sm">No recent tasks</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {tasks.map((task) => (
+            <div
+              key={task.task_id}
+              onClick={() => onTaskClick?.(task.task_id)}
+              className="bg-dark-800 rounded-lg p-4 border border-dark-700 hover:border-dark-600 transition-colors cursor-pointer hover:bg-dark-750"
+            >
+              {/* Task Header */}
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex items-center space-x-2">
+                  {getStatusIcon(task.status)}
+                  <span className={`text-xs font-medium ${getStatusColor(task.status)} capitalize`}>
+                    {task.status}
+                  </span>
+                </div>
+                <span className="text-xs text-dark-500">
+                  {formatDate(task.created_at)}
+                </span>
+              </div>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-700 text-sm">⚠️ {error}</p>
-          </div>
-        )}
+              {/* Task Content */}
+              <div className="mb-3">
+                <p className="text-white text-sm leading-relaxed">
+                  {truncatePrompt(task.original_prompt)}
+                </p>
+              </div>
 
-        {isLoading ? (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading recent tasks...</p>
-          </div>
-        ) : recentTasks.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500 text-lg">📝 No tasks yet</p>
-            <p className="text-gray-400 text-sm mt-2">
-              Create your first prompt improvement task above!
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {recentTasks.map((task) => (
-              <div
-                key={task.task_id}
-                className="task-card hover:bg-white/90 transition-all duration-200"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-2xl">{getStatusEmoji(task.status)}</span>
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <span className="font-medium text-gray-800">
-                          Task #{task.task_id}
-                        </span>
-                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
-                          {task.improvement_type}
-                        </span>
-                        <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
-                          {task.provider}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 mt-1">
-                        {formatDate(task.created_at)}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    {task.quality_score && (
-                      <div className="text-center">
-                        <div className="text-lg">
-                          {task.quality_emoji}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {task.quality_score}/10
-                        </div>
-                      </div>
-                    )}
-                    
-                    {task.processing_time && (
-                      <div className="text-xs text-gray-500">
-                        ⏱️ {task.processing_time}s
-                      </div>
-                    )}
-                    
-                    {task.has_result && (
-                      <button
-                        onClick={() => toggleTaskExpansion(task.task_id)}
-                        disabled={isLoadingResult === task.task_id}
-                        className="btn btn-primary btn-xs"
-                      >
-                        {isLoadingResult === task.task_id ? (
-                          <>
-                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
-                            Loading...
-                          </>
-                        ) : expandedTasks.has(task.task_id) ? (
-                          'Hide Result'
-                        ) : (
-                          'View Result'
-                        )}
-                      </button>
-                    )}
-                  </div>
+              {/* Task Details */}
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center space-x-3">
+                  <span className="text-dark-400">
+                    {task.provider} • {task.ai_model}
+                  </span>
+                  {task.improvement_type && (
+                    <span className="text-purple-400 capitalize">
+                      {task.improvement_type.replace('_', ' ')}
+                    </span>
+                  )}
                 </div>
                 
-                {/* Accordion Results Display */}
-                {expandedTasks.has(task.task_id) && taskResults.has(task.task_id) && (
-                  <div className="mt-4 border-t border-gray-200 pt-4">
-                    <TaskResultAccordion taskResult={taskResults.get(task.task_id)!} />
+                {task.quality_score && (
+                  <div className="flex items-center space-x-1">
+                    <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                    <span className="text-yellow-400">
+                      {task.quality_score}/10
+                    </span>
                   </div>
                 )}
               </div>
-            ))}
-          </div>
-        )}
 
+              {/* Processing Time */}
+              {task.processing_time && (
+                <div className="mt-2 pt-2 border-t border-dark-700">
+                  <div className="flex items-center space-x-1 text-xs text-dark-400">
+                    <Clock className="w-3 h-3" />
+                    <span>Completed in {task.processing_time}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
-      </div>
+      {/* Refresh Button */}
+      {!isLoading && (
+        <div className="mt-4 pt-4 border-t border-dark-800">
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full text-center text-xs text-dark-400 hover:text-purple-400 transition-colors"
+          >
+            Refresh to see latest tasks
+          </button>
+        </div>
+      )}
     </div>
   );
-}; 
+}

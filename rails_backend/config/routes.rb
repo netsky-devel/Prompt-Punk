@@ -1,4 +1,7 @@
 Rails.application.routes.draw do
+  # WebSocket routes
+  mount ActionCable.server => '/cable'
+  
   # API routes
   namespace :api do
     namespace :v1 do

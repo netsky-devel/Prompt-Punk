@@ -1,11 +1,11 @@
-# Development Dockerfile for React frontend
-FROM node:18-alpine
+FROM node:20-alpine
 
-# Set working directory
 WORKDIR /app
 
-# Install dependencies
+# Copy package files
 COPY package*.json ./
+
+# Install dependencies
 RUN npm install
 
 # Copy source code
@@ -15,4 +15,4 @@ COPY . .
 EXPOSE 5173
 
 # Start development server
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+CMD ["npm", "run", "dev"]

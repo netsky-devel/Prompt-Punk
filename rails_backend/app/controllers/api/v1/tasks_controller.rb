@@ -95,6 +95,7 @@ class Api::V1::TasksController < Api::BaseController
     tasks = PromptTask.recent.limit(10).map do |task|
       {
         task_id: task.id,
+        original_prompt: task.original_prompt,
         status: task.status,
         improvement_type: task.improvement_type,
         provider: task.provider,
@@ -113,6 +114,8 @@ class Api::V1::TasksController < Api::BaseController
   def test_api_key
     # If we got here, the API key passed validation in before_action
     render_success({
+      valid: true,
+      provider: "google", # Default provider for now
       message: "API key is valid",
       key_format: current_api_key[0..10] + "...",
       timestamp: Time.current.iso8601,

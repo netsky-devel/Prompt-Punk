@@ -27,7 +27,12 @@ class Api::BaseController < ApplicationController
 
   def valid_api_key_format?(api_key)
     # Basic format validation for common providers
-    api_key.match?(/^(sk-|AIza|sk-ant-)/) && api_key.length > 10
+    # Accept various formats: OpenAI (sk-), Google/Gemini (AIza), Anthropic (sk-ant-), and other common formats
+    return false if api_key.length < 10
+    
+    # Accept most reasonable API key formats
+    api_key.match?(/^(sk-|AIza|sk-ant-|[A-Za-z0-9_-]{20,})/) || 
+    api_key.match?(/^[A-Za-z0-9_-]{30,}$/)
   end
 
   def current_api_key

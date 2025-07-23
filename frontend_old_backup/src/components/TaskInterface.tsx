@@ -1,14 +1,28 @@
 import React, { useState } from 'react';
-import { useTask } from '../hooks/useTask';
-import { usePolling } from '../hooks/usePolling';
+import { useTaskManagerWebSocket } from '../hooks/useTaskManagerWebSocket';
 import { useProvider } from '../hooks/useProvider';
 import { ARCHITECTURE_LABELS } from '../constants';
 import type { TaskType, PromptArchitecture } from '../types/api';
 
 export const TaskInterface: React.FC = () => {
-  const { areSettingsComplete, isProviderValid } = useProvider();
-  const { createTask, currentTask, taskResult, isLoading, error, resetTask } = useTask();
-  usePolling(); // Start polling automatically
+  const { areSettingsComplete, isProviderValid, providerSettings } = useProvider();
+  
+  const {
+    currentTask,
+    isSubmitting,
+    error,
+    isConnected,
+    connectionError,
+    submitTask,
+    cancelTask,
+    clearError,
+    isTaskRunning
+  } = useTaskManagerWebSocket({ 
+    apiKey: providerSettings?.api_key || '',
+    onTaskCompleted: () => {
+      // Task completed, UI will update automatically
+    }
+  });
 
   // Form state
   const [prompt, setPrompt] = useState('');

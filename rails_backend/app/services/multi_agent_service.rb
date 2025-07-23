@@ -70,54 +70,75 @@ class MultiAgentService
     @provider_config = provider_config
     @max_rounds = @task.max_rounds || 5
     @session = find_or_create_session
+    @progress_callback = nil
 
     # Create LangChain AI provider
     @ai_provider = create_langchain_provider
+  end
+
+  # Set progress callback for real-time updates
+  def on_progress(&block)
+    @progress_callback = block
   end
 
   def call
 
     Rails.logger.info "MultiAgentService: Starting collaboration for task #{@task.id}"
     @task.update!(status: :processing, started_at: Time.current)
+    
+    notify_progress('initialization', 5, 'Multi-agent collaboration initialized')
 
     current_prompt = @task.original_prompt
     final_improvement = nil
 
     (1..@max_rounds).each do |round|
       Rails.logger.info "=== ROUND #{round}/#{@max_rounds} ==="
+      
+      base_progress = 10 + ((round - 1) * 80 / @max_rounds)
+      
+      notify_progress('round_start', base_progress, "Starting round #{round}/#{@max_rounds}")
 
       # Step 1: Prompt Engineer improves the prompt
+      notify_progress('prompt_engineer', base_progress + 10, "Prompt Engineer analyzing and improving prompt...")
       improvement_result = prompt_engineer_step(current_prompt, round)
       improved_prompt = improvement_result["improved_prompt"] || improvement_result[:improved_prompt]
 
       # Step 2: Reviewer analyzes the improvement
+      notify_progress('reviewer', base_progress + 30, "Reviewer evaluating prompt quality...")
       review_result = reviewer_step(@task.original_prompt, improved_prompt, round)
 
       # Step 3: Lead Agent makes strategic decision
+      notify_progress('lead_agent', base_progress + 50, "Lead Agent making strategic decision...")
       decision_result = lead_agent_step(review_result, round)
       decision = decision_result["decision"] || decision_result[:decision] || "continue"
 
       # Update session with round results
+      notify_progress('saving_round', base_progress + 60, "Saving round #{round} results...")
       update_session_round(round, improvement_result, review_result, decision_result)
 
       case decision.downcase
       when "approve"
         Rails.logger.info "✅ APPROVED: Prompt meets quality standards"
+        notify_progress('approved', 90, "Prompt approved! Quality standards met.")
         final_improvement = improvement_result
         break
       when "restart"
         Rails.logger.info "🔄 RESTART: Starting fresh approach"
+        notify_progress('restart', base_progress + 70, "Restarting with fresh approach...")
         current_prompt = @task.original_prompt
         next
       else # "continue"
         Rails.logger.info "⏭️  CONTINUE: Proceeding to next round"
+        notify_progress('continue', base_progress + 70, "Continuing to next round...")
         current_prompt = improved_prompt
         final_improvement = improvement_result
       end
     end
 
     # Save final results
+    notify_progress('finalizing', 95, 'Saving final results...')
     save_results(final_improvement || {})
+    notify_progress('completed', 100, 'Multi-agent collaboration completed successfully!')
     Rails.logger.info "MultiAgentService: Collaboration completed"
   rescue => e
     Rails.logger.error "MultiAgentService error: #{e.message}"
@@ -127,6 +148,14 @@ class MultiAgentService
   end
 
   private
+
+  def notify_progress(step, progress, message)
+    return unless @progress_callback
+    
+    @progress_callback.call(step, progress, message)
+  rescue => e
+    Rails.logger.error "Progress callback error: #{e.message}"
+  end
 
   def create_langchain_provider
     case @provider_config[:provider]

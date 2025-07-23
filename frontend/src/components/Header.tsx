@@ -1,29 +1,23 @@
-import React from 'react'
+import { Zap } from 'lucide-react';
 
-export const Header: React.FC = () => {
+export function Header() {
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-4 max-w-7xl">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-r from-primary-600 to-accent-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">PP</span>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold gradient-text">
-                Prompt Punk
-              </h1>
-              <p className="text-sm text-gray-600">
-                The Rebellious AI Prompt Enhancement Platform
-              </p>
-            </div>
+    <header className="bg-dark-900 border-b border-dark-800">
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
+            <Zap className="w-6 h-6 text-white" />
           </div>
-          
-          <div className="hidden md:flex items-center space-x-4">
-            <div className="w-2 h-2 bg-success-500 rounded-full animate-pulse"></div>
+          <div>
+            <h1 className="text-2xl font-bold text-white">
+              Prompt Punk
+            </h1>
+            <p className="text-dark-400 text-sm">
+              AI-powered prompt engineering platform
+            </p>
           </div>
         </div>
       </div>
     </header>
-  )
-} 
+  );
+}
