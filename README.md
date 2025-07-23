@@ -4,6 +4,12 @@
 
 Prompt Punk is a cutting-edge multi-agent AI system that transforms your basic prompts into powerful, optimized masterpieces. Using a collaborative team of AI agents, it analyzes, improves, and perfects your prompts with punk rock attitude and precision.
 
+## 📸 Preview
+
+![Prompt Punk Interface](assets/screenshot-main.png)
+
+*Modern dark UI with real-time WebSocket updates, multi-agent collaboration, and beautiful gradient design*
+
 ## 🚀 Features
 
 ### 🎯 Multi-Agent Prompt Enhancement

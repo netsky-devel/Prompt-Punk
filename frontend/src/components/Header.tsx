@@ -3,7 +3,7 @@ import { Zap } from 'lucide-react';
 export function Header() {
   return (
     <header className="bg-dark-900 border-b border-dark-800">
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-4 py-6 max-w-6xl">
         <div className="flex items-center space-x-3">
           <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
             <Zap className="w-6 h-6 text-white" />
