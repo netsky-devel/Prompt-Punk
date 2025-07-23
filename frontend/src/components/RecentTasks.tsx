@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, Star, AlertCircle, CheckCircle, Loader } from 'lucide-react';
+import { Clock, AlertCircle, CheckCircle, Loader } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import type { RecentTask } from '../types/api';
 
@@ -144,15 +144,6 @@ export function RecentTasks({ onTaskClick }: RecentTasksProps) {
                     </span>
                   )}
                 </div>
-                
-                {task.quality_score && (
-                  <div className="flex items-center space-x-1">
-                    <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                    <span className="text-yellow-400">
-                      {task.quality_score}/10
-                    </span>
-                  </div>
-                )}
               </div>
 
               {/* Processing Time */}

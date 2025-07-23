@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Copy, Star, Users, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
+import { Copy, Users, ChevronDown, ChevronUp, RefreshCw, CheckCircle } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import type { Task, TaskResult } from '../types/api';
 
@@ -47,30 +47,7 @@ export function TaskResults({ task, onReset }: TaskResultsProps) {
     }
   };
 
-  const getQualityColor = (score: number) => {
-    if (score >= 8) return 'text-green-400';
-    if (score >= 6) return 'text-yellow-400';
-    return 'text-red-400';
-  };
 
-  const renderStars = (score: number) => {
-    const stars = Math.round(score / 2); // Convert 10-point scale to 5-star
-    return (
-      <div className="flex items-center space-x-1">
-        {[...Array(5)].map((_, i) => (
-          <Star
-            key={i}
-            className={`w-4 h-4 ${
-              i < stars ? 'text-yellow-400 fill-current' : 'text-dark-600'
-            }`}
-          />
-        ))}
-        <span className="text-sm text-dark-400 ml-2">
-          {score}/10
-        </span>
-      </div>
-    );
-  };
 
   if (isLoading) {
     return (
@@ -110,7 +87,7 @@ export function TaskResults({ task, onReset }: TaskResultsProps) {
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-3">
             <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-green-500 to-blue-500 rounded-lg">
-              <Star className="w-5 h-5 text-white" />
+              <CheckCircle className="w-5 h-5 text-white" />
             </div>
             <div>
               <h2 className="text-xl font-bold text-white">
@@ -136,13 +113,6 @@ export function TaskResults({ task, onReset }: TaskResultsProps) {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-dark-800">
             {improvement && (
               <>
-                <div className="text-center">
-                  <div className={`text-lg font-bold ${getQualityColor(improvement.quality_score)}`}>
-                    {improvement.quality_score}/10
-                  </div>
-                  <div className="text-xs text-dark-400">Quality Score</div>
-                </div>
-                
                 <div className="text-center">
                   <div className="text-lg font-bold text-white">
                     {improvement.formatted_processing_time}
@@ -179,7 +149,6 @@ export function TaskResults({ task, onReset }: TaskResultsProps) {
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white">Improved Prompt</h3>
             <div className="flex items-center space-x-2">
-              {renderStars(improvement.quality_score)}
               <button
                 onClick={() => copyToClipboard(improvement.improved_prompt, 'improved')}
                 className="p-2 text-dark-400 hover:text-white hover:bg-dark-800 rounded-lg transition-colors"
